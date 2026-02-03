@@ -3,40 +3,246 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Inscrição</title>
+  <title>Inscrição do Evento</title>
   <style>
-    body { font-family: system-ui, Arial; max-width: 560px; margin: 40px auto; padding: 0 16px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 18px; }
-    label { display:block; margin-top: 12px; font-weight: 650; }
-    input, select, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
-    button { border: 0; cursor: pointer; font-weight: 750; padding: 12px; }
-    button:disabled { cursor: not-allowed; opacity: .6; }
-    .row { margin-top: 10px; padding: 10px; background: #f7f7f7; border-radius: 10px; line-height: 1.35; }
-    .ok { color: #0a7; font-weight: 750; }
-    .err { color: #c00; font-weight: 750; }
-    small { color: #555; }
-    .code { font-size: 28px; font-weight: 900; letter-spacing: 2px; margin-top: 6px; }
+    :root{
+      --bg1:#0b1220; --bg2:#0f1b33;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --ok:#38d39f; --err:#ff5a7a; --warn:#ffd36e;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background: radial-gradient(1200px 600px at 20% 10%, #1a2a57 0%, transparent 60%),
+                  radial-gradient(1200px 600px at 80% 0%, #2b1a57 0%, transparent 55%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 16px;
+    }
+    .wrap{
+      width:min(980px, 100%);
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:18px;
+    }
+    @media (max-width: 900px){
+      .wrap{grid-template-columns: 1fr}
+    }
+    .hero, .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+    }
+    .hero{ padding:26px; position:relative; overflow:hidden;}
+    .badge{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 12px; border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color:var(--muted);
+      font-weight:650; font-size:12px;
+    }
+    .h1{ margin:14px 0 6px; font-size:34px; line-height:1.05; letter-spacing:-.5px;}
+    .p{ margin:0; color:var(--muted); font-size:14px; line-height:1.55;}
+    .kpis{ margin-top:16px; display:grid; grid-template-columns: repeat(3, 1fr); gap:10px;}
+    .kpi{
+      border:1px solid var(--stroke);
+      border-radius: 14px;
+      padding:12px;
+      background: rgba(0,0,0,.18);
+    }
+    .kpi .t{ color:var(--muted); font-size:12px; margin-bottom:6px}
+    .kpi .v{ font-size:22px; font-weight:900; letter-spacing:.3px}
+    .kpi .s{ font-size:12px; color:var(--muted); margin-top:4px}
+    .card{ padding:22px;}
+    .title{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+      margin-bottom:14px;
+    }
+    .title h2{ margin:0; font-size:18px; letter-spacing:.2px;}
+    .title small{ color:var(--muted) }
+    .status{
+      border:1px solid var(--stroke);
+      border-radius: 14px;
+      padding:12px 12px;
+      background: rgba(0,0,0,.18);
+      margin-bottom:14px;
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .dot{
+      width:10px; height:10px; border-radius:99px; margin-top:5px;
+      background: var(--warn);
+      box-shadow: 0 0 0 4px rgba(255,211,110,.15);
+      flex:0 0 auto;
+    }
+    .status.ok .dot{ background: var(--ok); box-shadow: 0 0 0 4px rgba(56,211,159,.15); }
+    .status.err .dot{ background: var(--err); box-shadow: 0 0 0 4px rgba(255,90,122,.15); }
+    .status .msg{ font-size:13px; color:var(--muted); line-height:1.45;}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap:12px;
+    }
+    @media (max-width: 640px){
+      .grid{grid-template-columns: 1fr}
+    }
+    label{ display:block; font-size:12px; color:var(--muted); margin:10px 0 6px; }
+    input, select{
+      width:100%;
+      padding:12px 12px;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline:none;
+      transition: .15s ease;
+    }
+    input::placeholder{ color: rgba(255,255,255,.45); }
+    input:focus, select:focus{ border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
+    .actions{
+      margin-top:14px;
+      display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+    }
+    button{
+      flex:1;
+      min-width: 220px;
+      padding:12px 14px;
+      border:0;
+      border-radius: 14px;
+      font-weight:900;
+      letter-spacing:.2px;
+      color:#06111f;
+      background: linear-gradient(135deg, #62f0c8, #4aa3ff);
+      cursor:pointer;
+      box-shadow: 0 12px 35px rgba(74,163,255,.18);
+      transition:.12s ease;
+    }
+    button:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+    button:hover:not(:disabled){ transform: translateY(-1px); }
+    .ghost{
+      flex:0 0 auto;
+      min-width: auto;
+      padding:12px 14px;
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      border:1px solid var(--stroke);
+      box-shadow:none;
+    }
+    .codebox{
+      margin-top:12px;
+      border:1px dashed rgba(255,255,255,.28);
+      background: rgba(0,0,0,.20);
+      border-radius: 14px;
+      padding:12px;
+      display:none;
+    }
+    .codebox .big{
+      font-size:34px; font-weight:1000; letter-spacing:4px;
+      margin-top:4px;
+    }
+    .hint{ margin-top:10px; color:var(--muted); font-size:12px; line-height:1.5;}
+    .spin{
+      width:14px; height:14px; border-radius:999px;
+      border:2px solid rgba(255,255,255,.18);
+      border-top-color: rgba(255,255,255,.85);
+      animation: spin 0.8s linear infinite;
+      display:inline-block;
+      vertical-align:-2px;
+      margin-right:8px;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2 id="titulo">Inscrição</h2>
-    <div class="row" id="statusBox">Carregando vagas...</div>
+  <div class="wrap">
+    <section class="hero">
+      <div class="badge">📝 Inscrição online • Confirmação instantânea</div>
+      <div class="h1" id="heroTitle">Inscrição do Evento</div>
+      <p class="p" id="heroSub">Preencha seus dados e gere seu ingresso (código) para apresentar na recepção.</p>
 
-    <label for="nome">Nome *</label>
-    <input id="nome" type="text" placeholder="Seu nome completo" autocomplete="name" />
+      <div class="kpis" aria-label="vagas">
+        <div class="kpi">
+          <div class="t">Tarde</div>
+          <div class="v" id="kpiTarde">—</div>
+          <div class="s">vagas restantes</div>
+        </div>
+        <div class="kpi">
+          <div class="t">Noite</div>
+          <div class="v" id="kpiNoite">—</div>
+          <div class="s">vagas restantes</div>
+        </div>
+        <div class="kpi">
+          <div class="t">Integral</div>
+          <div class="v" id="kpiIntegral">—</div>
+          <div class="s">restante (tarde+noite)</div>
+        </div>
+      </div>
 
-    <label for="cpf">CPF *</label>
-    <input id="cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" />
+      <div class="hint">
+        * Campos obrigatórios: nome, CPF e e-mail. CPF/e-mail não repetem no mesmo evento.<br>
+        Integral consome 1 vaga da tarde e 1 vaga da noite.
+      </div>
+    </section>
 
-    <label for="email">E-mail *</label>
-    <input id="email" type="email" placeholder="seuemail@dominio.com" autocomplete="email" />
+    <section class="card">
+      <div class="title">
+        <div>
+          <h2 id="formTitle">Formulário de inscrição</h2>
+          <small id="eventMeta">Carregando evento...</small>
+        </div>
+      </div>
 
-    <label for="turno">Turno *</label>
-    <select id="turno"></select>
+      <div class="status" id="statusBox">
+        <div class="dot"></div>
+        <div class="msg" id="statusMsg">Carregando vagas...</div>
+      </div>
 
-    <button id="btn" onclick="inscrever()">Confirmar inscrição</button>
-    <p><small>* Campos obrigatórios. CPF e e-mail não podem repetir no mesmo evento. Integral consome 1 vaga da tarde e 1 da noite.</small></p>
+      <div class="grid">
+        <div>
+          <label for="nome">Nome completo *</label>
+          <input id="nome" type="text" placeholder="Ex.: Diego Rivelino" autocomplete="name" />
+        </div>
+
+        <div>
+          <label for="turno">Turno *</label>
+          <select id="turno"></select>
+        </div>
+
+        <div>
+          <label for="cpf">CPF *</label>
+          <input id="cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" />
+        </div>
+
+        <div>
+          <label for="email">E-mail *</label>
+          <input id="email" type="email" placeholder="seuemail@dominio.com" autocomplete="email" />
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="btn" onclick="inscrever()">Confirmar inscrição</button>
+        <button class="ghost" onclick="carregarStatus(true)">Atualizar vagas</button>
+      </div>
+
+      <div class="codebox" id="codeBox">
+        <div style="color:rgba(255,255,255,.75);font-size:12px;">Seu código de confirmação</div>
+        <div class="big" id="codeValue">----</div>
+        <div class="hint">Apresente este código na recepção para check-in.</div>
+      </div>
+    </section>
   </div>
 
 <script>
@@ -46,19 +252,29 @@
   const eventoId = qs.get('evento_id');
 
   const statusBox = document.getElementById('statusBox');
-  const titulo = document.getElementById('titulo');
+  const statusMsg = document.getElementById('statusMsg');
+  const formTitle = document.getElementById('formTitle');
+  const eventMeta = document.getElementById('eventMeta');
+
+  const kpiTarde = document.getElementById('kpiTarde');
+  const kpiNoite = document.getElementById('kpiNoite');
+  const kpiIntegral = document.getElementById('kpiIntegral');
+
   const turnoSel = document.getElementById('turno');
   const btn = document.getElementById('btn');
 
-  const turnosOrdem = ['tarde', 'noite', 'integral'];
+  const codeBox = document.getElementById('codeBox');
+  const codeValue = document.getElementById('codeValue');
 
-  function setMsg(html, cls = '') {
-    statusBox.className = 'row ' + cls;
-    statusBox.innerHTML = html;
+  const turnosOrdem = ['tarde','noite','integral'];
+
+  function setStatus(text, type = '') {
+    statusBox.className = 'status' + (type ? ` ${type}` : '');
+    statusMsg.innerHTML = text;
   }
 
   function turnoLabel(t) {
-    t = (t || '').toLowerCase();
+    t = (t||'').toLowerCase();
     return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
   }
 
@@ -70,20 +286,33 @@
     if (/^(\d)\1{10}$/.test(cpfNorm)) return false;
     return true;
   }
-
   function validEmailFormat(emailNorm) {
     return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm);
   }
 
+  function mapErrorToMessage(code) {
+    switch (code) {
+      case 'CPF_INVALIDO': return 'CPF inválido. Digite um CPF com 11 dígitos.';
+      case 'EMAIL_INVALIDO': return 'E-mail inválido. Verifique o formato.';
+      case 'CPF_DUPLICADO': return 'Este CPF já está inscrito neste evento.';
+      case 'EMAIL_DUPLICADO': return 'Este e-mail já está inscrito neste evento.';
+      case 'TURNO_DESABILITADO': return 'Este turno não está habilitado para o evento.';
+      case 'SEM_VAGAS': return 'Sem vagas no turno selecionado.';
+      case 'EVENTO_NAO_ENCONTRADO': return 'Evento não encontrado.';
+      case 'EVENTO_INATIVO': return 'Evento inativo.';
+      case 'PARAM_EVENTO_ID_OBRIGATORIO': return 'Falta evento_id na URL.';
+      default: return `Erro: ${code}`;
+    }
+  }
+
   function renderTurnos(status) {
     turnoSel.innerHTML = '';
-
     const hab = status.turnos_habilitados || {};
     const r = status.restantes || {};
 
     const enabled = turnosOrdem.filter(t => hab[t]);
     if (enabled.length === 0) {
-      setMsg('⚠️ Nenhum turno habilitado para este evento.', 'err');
+      setStatus('⚠️ Nenhum turno habilitado para este evento.', 'err');
       btn.disabled = true;
       return;
     }
@@ -103,72 +332,52 @@
     btn.disabled = [...turnoSel.options].every(o => o.disabled);
   }
 
-  function mapErrorToMessage(code) {
-    switch (code) {
-      case 'CPF_INVALIDO': return '❌ CPF inválido. Digite um CPF com 11 dígitos.';
-      case 'EMAIL_INVALIDO': return '❌ E-mail inválido. Verifique o formato.';
-      case 'CPF_DUPLICADO': return '❌ Este CPF já está inscrito neste evento.';
-      case 'EMAIL_DUPLICADO': return '❌ Este e-mail já está inscrito neste evento.';
-      case 'TURNO_DESABILITADO': return '❌ Este turno não está habilitado para o evento.';
-      case 'SEM_VAGAS': return '❌ Sem vagas no turno selecionado.';
-      case 'EVENTO_NAO_ENCONTRADO': return '❌ Evento não encontrado.';
-      case 'EVENTO_INATIVO': return '❌ Evento inativo.';
-      default: return `❌ Erro: <b>${code}</b>`;
-    }
-  }
-
-  async function carregarStatus() {
-    btn.disabled = true;
-
+  async function carregarStatus(force = false) {
     if (!eventoId) {
-      setMsg('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
+      setStatus('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
+      eventMeta.textContent = 'URL inválida';
+      btn.disabled = true;
       return;
     }
 
+    btn.disabled = true;
+    setStatus(`<span class="spin"></span>Carregando vagas...`);
+
     try {
       const controller = new AbortController();
-      const t = setTimeout(() => controller.abort(), 15000); // 15s no GET
-
-      const url = `${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}`;
+      const t = setTimeout(() => controller.abort(), 45000); // tolera cold start
+      const url = `${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}${force ? `&ts=${Date.now()}` : ''}`;
       const res = await fetch(url, { signal: controller.signal });
-
       clearTimeout(t);
 
       const data = await res.json();
 
       if (!data.ok) {
-        setMsg(
-          `❌ Erro: <b>${data.error}</b>` + (data.details ? `<br><small>${data.details}</small>` : ''),
-          'err'
-        );
+        setStatus(`❌ ${mapErrorToMessage(data.error)}`, 'err');
+        eventMeta.textContent = `Evento: ${eventoId}`;
         btn.disabled = true;
         return;
       }
 
-      titulo.textContent = `Inscrição — ${data.nome_evento}`;
+      formTitle.textContent = `Inscrição — ${data.nome_evento}`;
+      eventMeta.textContent = `Evento ID: ${data.evento_id}`;
 
-      const r = data.restantes;
-      setMsg(
-        `📌 Vagas restantes (integral consome tarde+noite):<br>` +
-        `• Tarde: <b>${r.tarde}</b><br>` +
-        `• Noite: <b>${r.noite}</b><br>` +
-        `• Integral: <b>${r.integral}</b>`
-      );
+      kpiTarde.textContent = data.restantes.tarde;
+      kpiNoite.textContent = data.restantes.noite;
+      kpiIntegral.textContent = data.restantes.integral;
 
+      setStatus('✅ Vagas carregadas. Preencha o formulário e confirme.', 'ok');
       renderTurnos(data);
 
     } catch (err) {
       const msg = String(err || '');
-      const dica = msg.includes('AbortError')
-        ? '⏱️ Timeout ao carregar vagas (servidor demorou).'
-        : '';
-
-      setMsg(`❌ Falha ao carregar vagas.<br><small>${msg}</small>${dica ? `<br><small>${dica}</small>` : ''}`, 'err');
+      setStatus(`❌ Falha ao carregar vagas.<br><small>${msg}</small>`, 'err');
       btn.disabled = true;
     }
   }
 
   async function inscrever() {
+    codeBox.style.display = 'none';
     btn.disabled = true;
 
     const nome = document.getElementById('nome').value.trim();
@@ -179,22 +388,28 @@
     const cpfNorm = normCpf(cpf);
     const emailNorm = normEmail(email);
 
-    if (nome.length < 2) { setMsg('❌ Informe um nome válido.', 'err'); btn.disabled = false; return; }
-    if (!validCpfFormat(cpfNorm)) { setMsg('❌ CPF inválido. Use 11 dígitos.', 'err'); btn.disabled = false; return; }
-    if (!validEmailFormat(emailNorm)) { setMsg('❌ E-mail inválido.', 'err'); btn.disabled = false; return; }
+    if (nome.length < 2) { setStatus('❌ Informe um nome válido.', 'err'); btn.disabled = false; return; }
+    if (!validCpfFormat(cpfNorm)) { setStatus('❌ CPF inválido. Use 11 dígitos.', 'err'); btn.disabled = false; return; }
+    if (!validEmailFormat(emailNorm)) { setStatus('❌ E-mail inválido.', 'err'); btn.disabled = false; return; }
 
-    setMsg('Enviando inscrição...');
+    setStatus(`<span class="spin"></span>Confirmando inscrição...`);
 
     try {
       const controller = new AbortController();
-      const timeoutMs = 25000; // 25s no POST
-      const t = setTimeout(() => controller.abort(), timeoutMs);
+      const t = setTimeout(() => controller.abort(), 45000);
+
+      // FORM (sem preflight / sem CORS chato)
+      const form = new URLSearchParams();
+      form.set('evento_id', eventoId);
+      form.set('turno', turno);
+      form.set('nome', nome);
+      form.set('cpf', cpf);
+      form.set('email', email);
 
       const res = await fetch(WEB_APP_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         signal: controller.signal,
-        body: JSON.stringify({ evento_id: eventoId, turno, nome, cpf, email })
+        body: form
       });
 
       clearTimeout(t);
@@ -202,65 +417,37 @@
       const data = await res.json();
 
       if (!data.ok) {
-        setMsg(
-          mapErrorToMessage(data.error) + (data.details ? `<br><small>${data.details}</small>` : ''),
-          'err'
-        );
-
-        // Se for falta de vaga, pode atualizar o status (sem travar)
-        if (data.error === 'SEM_VAGAS') carregarStatus();
-
+        setStatus(`❌ ${mapErrorToMessage(data.error)}` + (data.details ? `<br><small>${data.details}</small>` : ''), 'err');
         btn.disabled = false;
         return;
       }
 
-      // Sucesso: mostra o código imediatamente
-      setMsg(
-        `✅ Inscrição confirmada para <b>${turnoLabel(turno)}</b>!<br><br>` +
-        `🎫 Seu código de confirmação:<br>` +
-        `<div class="code">${data.codigo}</div>` +
-        `<small>Apresente este código na recepção.</small>`,
-        'ok'
-      );
+      // Sucesso
+      setStatus('✅ Inscrição confirmada! Seu código foi gerado abaixo.', 'ok');
+      codeValue.textContent = String(data.codigo || '----').toUpperCase();
+      codeBox.style.display = 'block';
 
-      // Atualiza o status em segundo plano (sem "await" para não parecer travado)
-      carregarStatus();
-
+      // Atualiza KPIs em background
+      carregarStatus(true);
       btn.disabled = false;
 
     } catch (err) {
       const msg = String(err || '');
-
-      let dica = '';
-      if (msg.includes('AbortError')) {
-        dica = '⏱️ O servidor demorou demais (timeout). Isso indica lentidão no Apps Script.';
-      } else if (msg.toLowerCase().includes('failed to fetch')) {
-        dica = '🌐 “Failed to fetch”: URL do Web App errada (/exec), permissão, ou bloqueio CORS.';
-      }
-
-      setMsg(
-        `❌ Falha ao enviar inscrição.<br>` +
-        `<small>${msg}</small>` +
-        (dica ? `<br><small>${dica}</small>` : ''),
-        'err'
-      );
-
+      setStatus(`❌ Falha ao enviar inscrição.<br><small>${msg}</small>`, 'err');
       btn.disabled = false;
     }
   }
 
-  // Máscara CPF
+  // máscara CPF
   document.getElementById('cpf').addEventListener('input', (e) => {
-    const v = e.target.value.replace(/\D/g, '').slice(0, 11);
+    const v = e.target.value.replace(/\D/g,'').slice(0,11);
     const p = v.replace(/^(\d{3})(\d)/, '$1.$2')
                .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
                .replace(/\.(\d{3})(\d)/, '.$1-$2');
     e.target.value = p;
   });
 
-  // Inicializa
   carregarStatus();
 </script>
-
 </body>
 </html>
