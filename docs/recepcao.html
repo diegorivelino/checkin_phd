@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Recepção — Check-in</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 640px; margin: 40px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 18px; }
+    label { display:block; margin-top: 12px; font-weight: 650; }
+    input, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
+    button { border: 0; cursor: pointer; font-weight: 800; padding: 12px; }
+    button:disabled { cursor: not-allowed; opacity: .6; }
+    .row { margin-top: 12px; padding: 12px; background: #f7f7f7; border-radius: 10px; line-height: 1.35; }
+    .ok { color: #0a7; font-weight: 800; }
+    .err { color: #c00; font-weight: 800; }
+    .muted { color:#555; }
+    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .big { font-size: 26px; font-weight: 900; letter-spacing: 2px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>Recepção — Check-in</h2>
+    <div class="row muted" id="topInfo">Informe o código do participante.</div>
+
+    <div class="grid">
+      <div>
+        <label for="codigo">Código (4 caracteres)</label>
+        <input id="codigo" maxlength="4" placeholder="AB12" autocomplete="off" />
+      </div>
+      <div>
+        <label for="atendente">Atendente (opcional)</label>
+        <input id="atendente" placeholder="Seu nome" autocomplete="name" />
+      </div>
+    </div>
+
+    <button id="btnValidar" onclick="validar()">Validar</button>
+    <button id="btnCheckin" onclick="checkin()" disabled>Confirmar check-in</button>
+
+    <div class="row" id="resultado">Aguardando...</div>
+  </div>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxKlF3EY9A49Ibw96lUenawAblkgKUlprm_agycWYE0IELaKnhKKosDmfuXSeRVBVX/exec";
+
+  const qs = new URLSearchParams(location.search);
+  const eventoId = qs.get('evento_id');
+
+  const topInfo = document.getElementById('topInfo');
+  const resultado = document.getElementById('resultado');
+  const btnValidar = document.getElementById('btnValidar');
+  const btnCheckin = document.getElementById('btnCheckin');
+
+  function setRes(html, cls='') {
+    resultado.className = 'row ' + cls;
+    resultado.innerHTML = html;
+  }
+
+  function turnoLabel(t) {
+    t = (t||'').toLowerCase();
+    return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
+  }
+
+  function normCodigo() {
+    const el = document.getElementById('codigo');
+    el.value = (el.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+    return el.value;
+  }
+
+  function ensureEvento() {
+    if (!eventoId) {
+      topInfo.innerHTML = '❌ Falta <b>evento_id</b> na URL. Ex.: <code>recepcao.html?evento_id=evt-2026-03-01</code>';
+      btnValidar.disabled = true;
+      btnCheckin.disabled = true;
+      return false;
+    }
+    topInfo.innerHTML = `Evento: <b>${eventoId}</b>`;
+    return true;
+  }
+
+  async function validar() {
+    if (!ensureEvento()) return;
+
+    const codigo = normCodigo();
+    if (codigo.length !== 4) {
+      setRes('❌ Informe um código com 4 caracteres.', 'err');
+      btnCheckin.disabled = true;
+      return;
+    }
+
+    btnValidar.disabled = true;
+    btnCheckin.disabled = true;
+    setRes('Validando...', '');
+
+    const url = `${WEB_APP_URL}?action=validar&evento_id=${encodeURIComponent(eventoId)}&codigo=${encodeURIComponent(codigo)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) {
+      setRes('❌ Código não encontrado para este evento.', 'err');
+      btnValidar.disabled = false;
+      return;
+    }
+
+    const i = data.inscricao;
+    const ja = data.ja_checkin;
+
+    setRes(
+      `✅ <span class="big">${i.codigo}</span><br>` +
+      `Nome: <b>${i.nome}</b><br>` +
+      `Turno: <b>${turnoLabel(i.turno)}</b><br>` +
+      (ja ? `<br>⚠️ <b>Já fez check-in</b> em: ${i.checkin_em}` : `<br>Pronto para confirmar check-in.`),
+      ja ? 'err' : 'ok'
+    );
+
+    btnValidar.disabled = false;
+    btnCheckin.disabled = ja;
+  }
+
+  async function checkin() {
+    if (!ensureEvento()) return;
+
+    const codigo = normCodigo();
+    if (codigo.length !== 4) {
+      setRes('❌ Informe um código com 4 caracteres.', 'err');
+      return;
+    }
+
+    btnCheckin.disabled = true;
+    setRes('Confirmando check-in...', '');
+
+    const atendente = (document.getElementById('atendente').value || '').trim();
+
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'checkin', evento_id: eventoId, codigo, atendente })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      setRes('❌ Falha no check-in: ' + (data.error || 'erro'), 'err');
+      btnCheckin.disabled = false;
+      return;
+    }
+
+    if (data.message === 'JA_CHECKIN') {
+      setRes('⚠️ Já estava em check-in.', 'err');
+      await validar();
+      return;
+    }
+
+    setRes(
+      `✅ Check-in realizado!<br>` +
+      `Código: <b>${data.inscricao.codigo}</b><br>` +
+      `Nome: <b>${data.inscricao.nome}</b><br>` +
+      `Turno: <b>${turnoLabel(data.inscricao.turno)}</b><br>` +
+      `Horário: <b>${data.inscricao.checkin_em}</b>`,
+      'ok'
+    );
+
+    document.getElementById('codigo').value = '';
+  }
+
+  document.getElementById('codigo').addEventListener('input', normCodigo);
+  document.getElementById('codigo').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') validar();
+  });
+
+  ensureEvento();
+  setRes('Digite o código e clique em Validar.', '');
+</script>
+</body>
+</html>
