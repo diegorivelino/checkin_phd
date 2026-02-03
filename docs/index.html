@@ -50,15 +50,15 @@
   const turnoSel = document.getElementById('turno');
   const btn = document.getElementById('btn');
 
-  const turnosOrdem = ['tarde','noite','integral'];
+  const turnosOrdem = ['tarde', 'noite', 'integral'];
 
-  function setMsg(html, cls='') {
+  function setMsg(html, cls = '') {
     statusBox.className = 'row ' + cls;
     statusBox.innerHTML = html;
   }
 
   function turnoLabel(t) {
-    t = (t||'').toLowerCase();
+    t = (t || '').toLowerCase();
     return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
   }
 
@@ -77,6 +77,7 @@
 
   function renderTurnos(status) {
     turnoSel.innerHTML = '';
+
     const hab = status.turnos_habilitados || {};
     const r = status.restantes || {};
 
@@ -102,36 +103,6 @@
     btn.disabled = [...turnoSel.options].every(o => o.disabled);
   }
 
-  async function carregarStatus() {
-    if (!eventoId) {
-      setMsg('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
-      btn.disabled = true;
-      return;
-    }
-
-    const url = `${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}`;
-    const res = await fetch(url);
-    const data = await res.json();
-
-    if (!data.ok) {
-      setMsg(`❌ Erro: <b>${data.error}</b>`, 'err');
-      btn.disabled = true;
-      return;
-    }
-
-    titulo.textContent = `Inscrição — ${data.nome_evento}`;
-
-    const r = data.restantes;
-    setMsg(
-      `📌 Vagas restantes (integral consome tarde+noite):<br>` +
-      `• Tarde: <b>${r.tarde}</b><br>` +
-      `• Noite: <b>${r.noite}</b><br>` +
-      `• Integral: <b>${r.integral}</b>`
-    );
-
-    renderTurnos(data);
-  }
-
   function mapErrorToMessage(code) {
     switch (code) {
       case 'CPF_INVALIDO': return '❌ CPF inválido. Digite um CPF com 11 dígitos.';
@@ -139,10 +110,61 @@
       case 'CPF_DUPLICADO': return '❌ Este CPF já está inscrito neste evento.';
       case 'EMAIL_DUPLICADO': return '❌ Este e-mail já está inscrito neste evento.';
       case 'TURNO_DESABILITADO': return '❌ Este turno não está habilitado para o evento.';
-      case 'SEM_VAGAS': return '❌ Sem vagas no turno selecionado. Atualizando...';
+      case 'SEM_VAGAS': return '❌ Sem vagas no turno selecionado.';
       case 'EVENTO_NAO_ENCONTRADO': return '❌ Evento não encontrado.';
       case 'EVENTO_INATIVO': return '❌ Evento inativo.';
       default: return `❌ Erro: <b>${code}</b>`;
+    }
+  }
+
+  async function carregarStatus() {
+    btn.disabled = true;
+
+    if (!eventoId) {
+      setMsg('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
+      return;
+    }
+
+    try {
+      const controller = new AbortController();
+      const t = setTimeout(() => controller.abort(), 15000); // 15s no GET
+
+      const url = `${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}`;
+      const res = await fetch(url, { signal: controller.signal });
+
+      clearTimeout(t);
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        setMsg(
+          `❌ Erro: <b>${data.error}</b>` + (data.details ? `<br><small>${data.details}</small>` : ''),
+          'err'
+        );
+        btn.disabled = true;
+        return;
+      }
+
+      titulo.textContent = `Inscrição — ${data.nome_evento}`;
+
+      const r = data.restantes;
+      setMsg(
+        `📌 Vagas restantes (integral consome tarde+noite):<br>` +
+        `• Tarde: <b>${r.tarde}</b><br>` +
+        `• Noite: <b>${r.noite}</b><br>` +
+        `• Integral: <b>${r.integral}</b>`
+      );
+
+      renderTurnos(data);
+
+    } catch (err) {
+      const msg = String(err || '');
+      const dica = msg.includes('AbortError')
+        ? '⏱️ Timeout ao carregar vagas (servidor demorou).'
+        : '';
+
+      setMsg(`❌ Falha ao carregar vagas.<br><small>${msg}</small>${dica ? `<br><small>${dica}</small>` : ''}`, 'err');
+      btn.disabled = true;
     }
   }
 
@@ -163,45 +185,82 @@
 
     setMsg('Enviando inscrição...');
 
-    const res = await fetch(WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ evento_id: eventoId, turno, nome, cpf, email })
-    });
+    try {
+      const controller = new AbortController();
+      const timeoutMs = 25000; // 25s no POST
+      const t = setTimeout(() => controller.abort(), timeoutMs);
 
-    const data = await res.json();
+      const res = await fetch(WEB_APP_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify({ evento_id: eventoId, turno, nome, cpf, email })
+      });
 
-    if (!data.ok) {
-      setMsg(mapErrorToMessage(data.error), 'err');
-      if (data.error === 'SEM_VAGAS' || data.error === 'TURNO_DESABILITADO') await carregarStatus();
+      clearTimeout(t);
+
+      const data = await res.json();
+
+      if (!data.ok) {
+        setMsg(
+          mapErrorToMessage(data.error) + (data.details ? `<br><small>${data.details}</small>` : ''),
+          'err'
+        );
+
+        // Se for falta de vaga, pode atualizar o status (sem travar)
+        if (data.error === 'SEM_VAGAS') carregarStatus();
+
+        btn.disabled = false;
+        return;
+      }
+
+      // Sucesso: mostra o código imediatamente
+      setMsg(
+        `✅ Inscrição confirmada para <b>${turnoLabel(turno)}</b>!<br><br>` +
+        `🎫 Seu código de confirmação:<br>` +
+        `<div class="code">${data.codigo}</div>` +
+        `<small>Apresente este código na recepção.</small>`,
+        'ok'
+      );
+
+      // Atualiza o status em segundo plano (sem "await" para não parecer travado)
+      carregarStatus();
+
       btn.disabled = false;
-      return;
+
+    } catch (err) {
+      const msg = String(err || '');
+
+      let dica = '';
+      if (msg.includes('AbortError')) {
+        dica = '⏱️ O servidor demorou demais (timeout). Isso indica lentidão no Apps Script.';
+      } else if (msg.toLowerCase().includes('failed to fetch')) {
+        dica = '🌐 “Failed to fetch”: URL do Web App errada (/exec), permissão, ou bloqueio CORS.';
+      }
+
+      setMsg(
+        `❌ Falha ao enviar inscrição.<br>` +
+        `<small>${msg}</small>` +
+        (dica ? `<br><small>${dica}</small>` : ''),
+        'err'
+      );
+
+      btn.disabled = false;
     }
-
-    setMsg(
-      `✅ Inscrição confirmada para <b>${turnoLabel(turno)}</b>!<br><br>` +
-      `🎫 Seu código de confirmação:<br>` +
-      `<div class="code">${data.codigo}</div>` +
-      `<small>Apresente este código na recepção.</small>`,
-      'ok'
-    );
-
-    await carregarStatus();
   }
 
-  // máscara CPF
+  // Máscara CPF
   document.getElementById('cpf').addEventListener('input', (e) => {
-    const v = e.target.value.replace(/\D/g,'').slice(0,11);
+    const v = e.target.value.replace(/\D/g, '').slice(0, 11);
     const p = v.replace(/^(\d{3})(\d)/, '$1.$2')
                .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
                .replace(/\.(\d{3})(\d)/, '.$1-$2');
     e.target.value = p;
   });
 
-  carregarStatus().catch(err => {
-    setMsg('❌ Falha ao carregar vagas: ' + err, 'err');
-    btn.disabled = true;
-  });
+  // Inicializa
+  carregarStatus();
 </script>
+
 </body>
 </html>
