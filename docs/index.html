@@ -405,12 +405,10 @@
       form.set('nome', nome);
       form.set('cpf', cpf);
       form.set('email', email);
-
-      const res = await fetch(WEB_APP_URL, {
-        method: 'POST',
-        signal: controller.signal,
-        body: form
-      });
+      
+      const res = await fetch(WEB_APP_URL, { method: 'POST', body: form });
+      const data = await res.json();
+      
 
       clearTimeout(t);
 
