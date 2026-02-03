@@ -1,0 +1,207 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Inscrição</title>
+  <style>
+    body { font-family: system-ui, Arial; max-width: 560px; margin: 40px auto; padding: 0 16px; }
+    .card { border: 1px solid #ddd; border-radius: 12px; padding: 18px; }
+    label { display:block; margin-top: 12px; font-weight: 650; }
+    input, select, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
+    button { border: 0; cursor: pointer; font-weight: 750; padding: 12px; }
+    button:disabled { cursor: not-allowed; opacity: .6; }
+    .row { margin-top: 10px; padding: 10px; background: #f7f7f7; border-radius: 10px; line-height: 1.35; }
+    .ok { color: #0a7; font-weight: 750; }
+    .err { color: #c00; font-weight: 750; }
+    small { color: #555; }
+    .code { font-size: 28px; font-weight: 900; letter-spacing: 2px; margin-top: 6px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2 id="titulo">Inscrição</h2>
+    <div class="row" id="statusBox">Carregando vagas...</div>
+
+    <label for="nome">Nome *</label>
+    <input id="nome" type="text" placeholder="Seu nome completo" autocomplete="name" />
+
+    <label for="cpf">CPF *</label>
+    <input id="cpf" type="text" placeholder="000.000.000-00" inputmode="numeric" />
+
+    <label for="email">E-mail *</label>
+    <input id="email" type="email" placeholder="seuemail@dominio.com" autocomplete="email" />
+
+    <label for="turno">Turno *</label>
+    <select id="turno"></select>
+
+    <button id="btn" onclick="inscrever()">Confirmar inscrição</button>
+    <p><small>* Campos obrigatórios. CPF e e-mail não podem repetir no mesmo evento. Integral consome 1 vaga da tarde e 1 da noite.</small></p>
+  </div>
+
+<script>
+  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxKlF3EY9A49Ibw96lUenawAblkgKUlprm_agycWYE0IELaKnhKKosDmfuXSeRVBVX/exec";
+
+  const qs = new URLSearchParams(location.search);
+  const eventoId = qs.get('evento_id');
+
+  const statusBox = document.getElementById('statusBox');
+  const titulo = document.getElementById('titulo');
+  const turnoSel = document.getElementById('turno');
+  const btn = document.getElementById('btn');
+
+  const turnosOrdem = ['tarde','noite','integral'];
+
+  function setMsg(html, cls='') {
+    statusBox.className = 'row ' + cls;
+    statusBox.innerHTML = html;
+  }
+
+  function turnoLabel(t) {
+    t = (t||'').toLowerCase();
+    return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
+  }
+
+  function normCpf(cpf) { return (cpf || '').replace(/\D/g, ''); }
+  function normEmail(email) { return (email || '').trim().toLowerCase(); }
+
+  function validCpfFormat(cpfNorm) {
+    if (!/^\d{11}$/.test(cpfNorm)) return false;
+    if (/^(\d)\1{10}$/.test(cpfNorm)) return false;
+    return true;
+  }
+
+  function validEmailFormat(emailNorm) {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailNorm);
+  }
+
+  function renderTurnos(status) {
+    turnoSel.innerHTML = '';
+    const hab = status.turnos_habilitados || {};
+    const r = status.restantes || {};
+
+    const enabled = turnosOrdem.filter(t => hab[t]);
+    if (enabled.length === 0) {
+      setMsg('⚠️ Nenhum turno habilitado para este evento.', 'err');
+      btn.disabled = true;
+      return;
+    }
+
+    for (const t of enabled) {
+      const lotado = (r[t] <= 0);
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.disabled = lotado;
+      opt.textContent = `${turnoLabel(t)}${lotado ? ' (lotado)' : ''}`;
+      turnoSel.appendChild(opt);
+    }
+
+    const firstOk = [...turnoSel.options].find(o => !o.disabled);
+    if (firstOk) turnoSel.value = firstOk.value;
+
+    btn.disabled = [...turnoSel.options].every(o => o.disabled);
+  }
+
+  async function carregarStatus() {
+    if (!eventoId) {
+      setMsg('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
+      btn.disabled = true;
+      return;
+    }
+
+    const url = `${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}`;
+    const res = await fetch(url);
+    const data = await res.json();
+
+    if (!data.ok) {
+      setMsg(`❌ Erro: <b>${data.error}</b>`, 'err');
+      btn.disabled = true;
+      return;
+    }
+
+    titulo.textContent = `Inscrição — ${data.nome_evento}`;
+
+    const r = data.restantes;
+    setMsg(
+      `📌 Vagas restantes (integral consome tarde+noite):<br>` +
+      `• Tarde: <b>${r.tarde}</b><br>` +
+      `• Noite: <b>${r.noite}</b><br>` +
+      `• Integral: <b>${r.integral}</b>`
+    );
+
+    renderTurnos(data);
+  }
+
+  function mapErrorToMessage(code) {
+    switch (code) {
+      case 'CPF_INVALIDO': return '❌ CPF inválido. Digite um CPF com 11 dígitos.';
+      case 'EMAIL_INVALIDO': return '❌ E-mail inválido. Verifique o formato.';
+      case 'CPF_DUPLICADO': return '❌ Este CPF já está inscrito neste evento.';
+      case 'EMAIL_DUPLICADO': return '❌ Este e-mail já está inscrito neste evento.';
+      case 'TURNO_DESABILITADO': return '❌ Este turno não está habilitado para o evento.';
+      case 'SEM_VAGAS': return '❌ Sem vagas no turno selecionado. Atualizando...';
+      case 'EVENTO_NAO_ENCONTRADO': return '❌ Evento não encontrado.';
+      case 'EVENTO_INATIVO': return '❌ Evento inativo.';
+      default: return `❌ Erro: <b>${code}</b>`;
+    }
+  }
+
+  async function inscrever() {
+    btn.disabled = true;
+
+    const nome = document.getElementById('nome').value.trim();
+    const cpf = document.getElementById('cpf').value.trim();
+    const email = document.getElementById('email').value.trim();
+    const turno = turnoSel.value;
+
+    const cpfNorm = normCpf(cpf);
+    const emailNorm = normEmail(email);
+
+    if (nome.length < 2) { setMsg('❌ Informe um nome válido.', 'err'); btn.disabled = false; return; }
+    if (!validCpfFormat(cpfNorm)) { setMsg('❌ CPF inválido. Use 11 dígitos.', 'err'); btn.disabled = false; return; }
+    if (!validEmailFormat(emailNorm)) { setMsg('❌ E-mail inválido.', 'err'); btn.disabled = false; return; }
+
+    setMsg('Enviando inscrição...');
+
+    const res = await fetch(WEB_APP_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ evento_id: eventoId, turno, nome, cpf, email })
+    });
+
+    const data = await res.json();
+
+    if (!data.ok) {
+      setMsg(mapErrorToMessage(data.error), 'err');
+      if (data.error === 'SEM_VAGAS' || data.error === 'TURNO_DESABILITADO') await carregarStatus();
+      btn.disabled = false;
+      return;
+    }
+
+    setMsg(
+      `✅ Inscrição confirmada para <b>${turnoLabel(turno)}</b>!<br><br>` +
+      `🎫 Seu código de confirmação:<br>` +
+      `<div class="code">${data.codigo}</div>` +
+      `<small>Apresente este código na recepção.</small>`,
+      'ok'
+    );
+
+    await carregarStatus();
+  }
+
+  // máscara CPF
+  document.getElementById('cpf').addEventListener('input', (e) => {
+    const v = e.target.value.replace(/\D/g,'').slice(0,11);
+    const p = v.replace(/^(\d{3})(\d)/, '$1.$2')
+               .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+               .replace(/\.(\d{3})(\d)/, '.$1-$2');
+    e.target.value = p;
+  });
+
+  carregarStatus().catch(err => {
+    setMsg('❌ Falha ao carregar vagas: ' + err, 'err');
+    btn.disabled = true;
+  });
+</script>
+</body>
+</html>
