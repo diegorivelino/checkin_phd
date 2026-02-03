@@ -53,7 +53,7 @@
       border:1px solid var(--stroke);
       background: rgba(0,0,0,.18);
       color:var(--muted);
-      font-weight:650; font-size:12px;
+      font-weight:750; font-size:12px;
     }
     .h1{ margin:14px 0 6px; font-size:34px; line-height:1.05; letter-spacing:-.5px;}
     .p{ margin:0; color:var(--muted); font-size:14px; line-height:1.55;}
@@ -164,14 +164,22 @@
       margin-right:8px;
     }
     @keyframes spin{ to { transform: rotate(360deg); } }
+    code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.20);
+    }
   </style>
 </head>
 <body>
   <div class="wrap">
     <section class="hero">
-      <div class="badge">📝 Inscrição online • Confirmação instantânea</div>
+      <div class="badge">📝 Inscrição online • Código de confirmação</div>
       <div class="h1" id="heroTitle">Inscrição do Evento</div>
-      <p class="p" id="heroSub">Preencha seus dados e gere seu ingresso (código) para apresentar na recepção.</p>
+      <p class="p" id="heroSub">Preencha seus dados para garantir sua vaga e gerar o ingresso (código) para a recepção.</p>
 
       <div class="kpis" aria-label="vagas">
         <div class="kpi">
@@ -187,12 +195,13 @@
         <div class="kpi">
           <div class="t">Integral</div>
           <div class="v" id="kpiIntegral">—</div>
-          <div class="s">restante (tarde+noite)</div>
+          <div class="s">consome tarde+noite</div>
         </div>
       </div>
 
       <div class="hint">
-        * Campos obrigatórios: nome, CPF e e-mail. CPF/e-mail não repetem no mesmo evento.<br>
+        * Campos obrigatórios: Nome, CPF e E-mail.<br>
+        CPF/E-mail não podem repetir no mesmo evento.<br>
         Integral consome 1 vaga da tarde e 1 vaga da noite.
       </div>
     </section>
@@ -233,8 +242,8 @@
       </div>
 
       <div class="actions">
-        <button id="btn" onclick="inscrever()">Confirmar inscrição</button>
-        <button class="ghost" onclick="carregarStatus(true)">Atualizar vagas</button>
+        <button id="btn" type="button" onclick="inscrever()">Confirmar inscrição</button>
+        <button class="ghost" type="button" onclick="carregarStatus(true)">Atualizar vagas</button>
       </div>
 
       <div class="codebox" id="codeBox">
@@ -246,8 +255,11 @@
   </div>
 
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxKlF3EY9A49Ibw96lUenawAblkgKUlprm_agycWYE0IELaKnhKKosDmfuXSeRVBVX/exec";
+  // 1) Cole aqui a URL do seu Web App (/exec)
+  const WEB_APP_URL = "COLE_AQUI_SUA_URL_DO_WEB_APP";
 
+  // 2) evento_id vem por querystring:
+  // https://.../index.html?evento_id=rv-alero-2026
   const qs = new URLSearchParams(location.search);
   const eventoId = qs.get('evento_id');
 
@@ -301,6 +313,8 @@
       case 'EVENTO_NAO_ENCONTRADO': return 'Evento não encontrado.';
       case 'EVENTO_INATIVO': return 'Evento inativo.';
       case 'PARAM_EVENTO_ID_OBRIGATORIO': return 'Falta evento_id na URL.';
+      case 'TURNO_INVALIDO': return 'Turno inválido.';
+      case 'NOME_INVALIDO': return 'Nome inválido.';
       default: return `Erro: ${code}`;
     }
   }
@@ -334,8 +348,14 @@
 
   async function carregarStatus(force = false) {
     if (!eventoId) {
-      setStatus('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=evt-2026-03-01</code>', 'err');
+      setStatus('❌ Falta <b>evento_id</b> na URL. Ex.: <code>?evento_id=rv-alero-2026</code>', 'err');
       eventMeta.textContent = 'URL inválida';
+      btn.disabled = true;
+      return;
+    }
+    if (!WEB_APP_URL || WEB_APP_URL.includes('COLE_AQUI')) {
+      setStatus('❌ Configure o <b>WEB_APP_URL</b> no código do site.', 'err');
+      eventMeta.textContent = `Evento ID: ${eventoId}`;
       btn.disabled = true;
       return;
     }
@@ -353,8 +373,8 @@
       const data = await res.json();
 
       if (!data.ok) {
-        setStatus(`❌ ${mapErrorToMessage(data.error)}`, 'err');
-        eventMeta.textContent = `Evento: ${eventoId}`;
+        setStatus(`❌ ${mapErrorToMessage(data.error)}` + (data.details ? `<br><small>${data.details}</small>` : ''), 'err');
+        eventMeta.textContent = `Evento ID: ${eventoId}`;
         btn.disabled = true;
         return;
       }
@@ -370,8 +390,7 @@
       renderTurnos(data);
 
     } catch (err) {
-      const msg = String(err || '');
-      setStatus(`❌ Falha ao carregar vagas.<br><small>${msg}</small>`, 'err');
+      setStatus(`❌ Falha ao carregar vagas.<br><small>${String(err || '')}</small>`, 'err');
       btn.disabled = true;
     }
   }
@@ -390,7 +409,7 @@
 
     if (nome.length < 2) { setStatus('❌ Informe um nome válido.', 'err'); btn.disabled = false; return; }
     if (!validCpfFormat(cpfNorm)) { setStatus('❌ CPF inválido. Use 11 dígitos.', 'err'); btn.disabled = false; return; }
-    if (!validEmailFormat(emailNorm)) { setStatus('❌ E-mail inválido.', 'err'); btn.disabled = false; return; }
+    if (!validEmailFormat(emailNorm)) { setStatus('❌ E-mail inválido. Verifique o formato.', 'err'); btn.disabled = false; return; }
 
     setStatus(`<span class="spin"></span>Confirmando inscrição...`);
 
@@ -398,17 +417,19 @@
       const controller = new AbortController();
       const t = setTimeout(() => controller.abort(), 45000);
 
-      // FORM (sem preflight / sem CORS chato)
+      // FORM (URL-encoded) — compatível com o Code.gs entregue
       const form = new URLSearchParams();
       form.set('evento_id', eventoId);
       form.set('turno', turno);
       form.set('nome', nome);
       form.set('cpf', cpf);
       form.set('email', email);
-      
-      const res = await fetch(WEB_APP_URL, { method: 'POST', body: form });
-      const data = await res.json();
-      
+
+      const res = await fetch(WEB_APP_URL, {
+        method: 'POST',
+        signal: controller.signal,
+        body: form
+      });
 
       clearTimeout(t);
 
@@ -416,11 +437,12 @@
 
       if (!data.ok) {
         setStatus(`❌ ${mapErrorToMessage(data.error)}` + (data.details ? `<br><small>${data.details}</small>` : ''), 'err');
+        // se sem vagas, atualiza em background
+        if (data.error === 'SEM_VAGAS') carregarStatus(true);
         btn.disabled = false;
         return;
       }
 
-      // Sucesso
       setStatus('✅ Inscrição confirmada! Seu código foi gerado abaixo.', 'ok');
       codeValue.textContent = String(data.codigo || '----').toUpperCase();
       codeBox.style.display = 'block';
@@ -430,8 +452,7 @@
       btn.disabled = false;
 
     } catch (err) {
-      const msg = String(err || '');
-      setStatus(`❌ Falha ao enviar inscrição.<br><small>${msg}</small>`, 'err');
+      setStatus(`❌ Falha ao enviar inscrição.<br><small>${String(err || '')}</small>`, 'err');
       btn.disabled = false;
     }
   }
@@ -444,6 +465,11 @@
                .replace(/\.(\d{3})(\d)/, '.$1-$2');
     e.target.value = p;
   });
+
+  // Warm-up (reduz cold start no POST)
+  if (eventoId && WEB_APP_URL && !WEB_APP_URL.includes('COLE_AQUI')) {
+    fetch(`${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}`).catch(()=>{});
+  }
 
   carregarStatus();
 </script>
