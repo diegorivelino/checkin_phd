@@ -5,40 +5,180 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Recepção — Check-in</title>
   <style>
-    body { font-family: system-ui, Arial; max-width: 640px; margin: 40px auto; padding: 0 16px; }
-    .card { border: 1px solid #ddd; border-radius: 12px; padding: 18px; }
-    label { display:block; margin-top: 12px; font-weight: 650; }
-    input, button { width: 100%; padding: 10px; margin-top: 6px; border-radius: 10px; border: 1px solid #ccc; }
-    button { border: 0; cursor: pointer; font-weight: 800; padding: 12px; }
-    button:disabled { cursor: not-allowed; opacity: .6; }
-    .row { margin-top: 12px; padding: 12px; background: #f7f7f7; border-radius: 10px; line-height: 1.35; }
-    .ok { color: #0a7; font-weight: 800; }
-    .err { color: #c00; font-weight: 800; }
-    .muted { color:#555; }
-    .grid { display:grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .big { font-size: 26px; font-weight: 900; letter-spacing: 2px; }
+    :root{
+      --bg1:#080d18; --bg2:#0b1630;
+      --card: rgba(255,255,255,.08);
+      --card2: rgba(255,255,255,.06);
+      --stroke: rgba(255,255,255,.14);
+      --text: rgba(255,255,255,.92);
+      --muted: rgba(255,255,255,.70);
+      --ok:#38d39f; --err:#ff5a7a; --warn:#ffd36e;
+      --shadow: 0 18px 60px rgba(0,0,0,.45);
+      --radius: 18px;
+    }
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+      color:var(--text);
+      background: radial-gradient(1100px 520px at 20% 10%, #1a2a57 0%, transparent 60%),
+                  radial-gradient(900px 520px at 85% 0%, #2b1a57 0%, transparent 55%),
+                  linear-gradient(160deg, var(--bg1), var(--bg2));
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      padding:28px 16px;
+    }
+    .wrap{ width:min(980px,100%); display:grid; grid-template-columns: 1fr 1fr; gap:18px;}
+    @media (max-width: 900px){ .wrap{grid-template-columns:1fr} }
+    .card{
+      border:1px solid var(--stroke);
+      background: linear-gradient(180deg, var(--card), var(--card2));
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(10px);
+      padding:22px;
+    }
+    .badge{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 12px; border-radius:999px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.18);
+      color:var(--muted);
+      font-weight:800; font-size:12px;
+    }
+    h1{ margin:14px 0 6px; font-size:30px; letter-spacing:-.5px; }
+    p{ margin:0; color:var(--muted); font-size:14px; line-height:1.55; }
+    label{ display:block; font-size:12px; color:var(--muted); margin:12px 0 6px; }
+    input{
+      width:100%;
+      padding:14px 12px;
+      border-radius: 14px;
+      border:1px solid var(--stroke);
+      background: rgba(0,0,0,.22);
+      color: var(--text);
+      outline:none;
+      transition: .15s ease;
+      font-weight:900;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      font-size:16px;
+    }
+    input::placeholder{ color: rgba(255,255,255,.45); letter-spacing:0; text-transform:none; font-weight:600; }
+    input:focus{ border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
+    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
+    button{
+      flex:1;
+      min-width: 220px;
+      padding:12px 14px;
+      border:0;
+      border-radius: 14px;
+      font-weight:1000;
+      letter-spacing:.2px;
+      color:#06111f;
+      background: linear-gradient(135deg, #62f0c8, #4aa3ff);
+      cursor:pointer;
+      box-shadow: 0 12px 35px rgba(74,163,255,.18);
+      transition:.12s ease;
+    }
+    button:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
+    .ghost{
+      background: rgba(0,0,0,.18);
+      color: var(--muted);
+      border:1px solid var(--stroke);
+      box-shadow:none;
+    }
+    .status{
+      border:1px solid var(--stroke);
+      border-radius: 14px;
+      padding:12px;
+      background: rgba(0,0,0,.18);
+      margin-top:14px;
+      display:flex; gap:10px; align-items:flex-start;
+    }
+    .dot{ width:10px; height:10px; border-radius:99px; margin-top:5px; background: var(--warn); box-shadow: 0 0 0 4px rgba(255,211,110,.15); }
+    .status.ok .dot{ background: var(--ok); box-shadow: 0 0 0 4px rgba(56,211,159,.15); }
+    .status.err .dot{ background: var(--err); box-shadow: 0 0 0 4px rgba(255,90,122,.15); }
+    .msg{ font-size:13px; color:var(--muted); line-height:1.45; }
+    .panel{
+      border:1px solid var(--stroke);
+      border-radius: 14px;
+      padding:14px;
+      background: rgba(0,0,0,.20);
+      margin-top:14px;
+      display:none;
+    }
+    .kv{ display:grid; grid-template-columns: 140px 1fr; gap:8px 12px; }
+    .k{ color: rgba(255,255,255,.65); font-size:12px; }
+    .v{ font-weight:850; }
+    .tag{
+      display:inline-flex; padding:6px 10px; border-radius:999px;
+      border:1px solid var(--stroke); background: rgba(0,0,0,.20);
+      font-size:12px; color: rgba(255,255,255,.80);
+      margin-top:10px;
+    }
+    .spin{
+      width:14px; height:14px; border-radius:999px;
+      border:2px solid rgba(255,255,255,.18);
+      border-top-color: rgba(255,255,255,.85);
+      animation: spin 0.8s linear infinite;
+      display:inline-block;
+      vertical-align:-2px;
+      margin-right:8px;
+    }
+    @keyframes spin{ to { transform: rotate(360deg); } }
+    code{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 8px;
+      border: 1px solid var(--stroke);
+      background: rgba(0,0,0,.20);
+    }
   </style>
 </head>
 <body>
-  <div class="card">
-    <h2>Recepção — Check-in</h2>
-    <div class="row muted" id="topInfo">Informe o código do participante.</div>
+  <div class="wrap">
+    <section class="card">
+      <div class="badge">🎫 Recepção • Validação & Check-in</div>
+      <h1 id="title">Recepção</h1>
+      <p id="meta">Carregando evento…</p>
 
-    <div class="grid">
-      <div>
-        <label for="codigo">Código (4 caracteres)</label>
-        <input id="codigo" maxlength="4" placeholder="AB12" autocomplete="off" />
+      <label for="codigo">Código do participante</label>
+      <input id="codigo" maxlength="4" placeholder="Ex.: AB12" autocomplete="off" />
+
+      <div class="row">
+        <button id="btnValidar" type="button" onclick="validar()">Validar</button>
+        <button class="ghost" id="btnLimpar" type="button" onclick="limpar()">Limpar</button>
       </div>
-      <div>
-        <label for="atendente">Atendente (opcional)</label>
-        <input id="atendente" placeholder="Seu nome" autocomplete="name" />
+
+      <div class="status" id="statusBox">
+        <div class="dot"></div>
+        <div class="msg" id="statusMsg">Informe o código e clique em Validar.</div>
       </div>
-    </div>
+    </section>
 
-    <button id="btnValidar" onclick="validar()">Validar</button>
-    <button id="btnCheckin" onclick="checkin()" disabled>Confirmar check-in</button>
+    <section class="card">
+      <div class="badge">✅ Resultado</div>
+      <h1 style="margin-bottom:6px;">Participante</h1>
+      <p>Validação por evento: o código é único apenas dentro do mesmo evento.</p>
 
-    <div class="row" id="resultado">Aguardando...</div>
+      <div class="panel" id="panel">
+        <div class="kv">
+          <div class="k">Nome</div><div class="v" id="pNome">—</div>
+          <div class="k">Turno</div><div class="v" id="pTurno">—</div>
+          <div class="k">CPF</div><div class="v" id="pCpf">—</div>
+          <div class="k">E-mail</div><div class="v" id="pEmail">—</div>
+        </div>
+        <div class="tag" id="pCheckin">—</div>
+
+        <div class="row" style="margin-top:12px;">
+          <button id="btnCheckin" type="button" onclick="checkin()">Confirmar Check-in</button>
+          <button class="ghost" type="button" onclick="validar(true)">Revalidar</button>
+        </div>
+      </div>
+    </section>
   </div>
 
 <script>
@@ -47,130 +187,199 @@
   const qs = new URLSearchParams(location.search);
   const eventoId = qs.get('evento_id');
 
-  const topInfo = document.getElementById('topInfo');
-  const resultado = document.getElementById('resultado');
+  const title = document.getElementById('title');
+  const meta = document.getElementById('meta');
+
+  const codigoEl = document.getElementById('codigo');
+
+  const statusBox = document.getElementById('statusBox');
+  const statusMsg = document.getElementById('statusMsg');
+
+  const panel = document.getElementById('panel');
+  const pNome = document.getElementById('pNome');
+  const pTurno = document.getElementById('pTurno');
+  const pCpf = document.getElementById('pCpf');
+  const pEmail = document.getElementById('pEmail');
+  const pCheckin = document.getElementById('pCheckin');
+
   const btnValidar = document.getElementById('btnValidar');
   const btnCheckin = document.getElementById('btnCheckin');
 
-  function setRes(html, cls='') {
-    resultado.className = 'row ' + cls;
-    resultado.innerHTML = html;
+  let lastValidated = null; // guarda {codigo, checkinFeito}
+
+  function setStatus(html, type='') {
+    statusBox.className = 'status' + (type ? ` ${type}` : '');
+    statusMsg.innerHTML = html;
+  }
+
+  function maskCpf(cpf) {
+    const d = String(cpf||'').replace(/\D/g,'');
+    if (d.length !== 11) return cpf || '';
+    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
   }
 
   function turnoLabel(t) {
-    t = (t||'').toLowerCase();
+    t = String(t||'').toLowerCase();
     return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
   }
 
-  function normCodigo() {
-    const el = document.getElementById('codigo');
-    el.value = (el.value || '').trim().toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
-    return el.value;
-  }
-
-  function ensureEvento() {
-    if (!eventoId) {
-      topInfo.innerHTML = '❌ Falta <b>evento_id</b> na URL. Ex.: <code>recepcao.html?evento_id=evt-2026-03-01</code>';
-      btnValidar.disabled = true;
-      btnCheckin.disabled = true;
-      return false;
+  async function fetchJson(url, opts={}, timeoutMs=45000) {
+    const controller = new AbortController();
+    const t = setTimeout(()=>controller.abort(), timeoutMs);
+    try {
+      const res = await fetch(url, {...opts, signal: controller.signal});
+      const text = await res.text();
+      try { return JSON.parse(text); }
+      catch { throw new Error(`Resposta não é JSON (status ${res.status}). Prévia: ${text.slice(0,120)}`); }
+    } finally {
+      clearTimeout(t);
     }
-    topInfo.innerHTML = `Evento: <b>${eventoId}</b>`;
-    return true;
   }
 
-  async function validar() {
-    if (!ensureEvento()) return;
-
-    const codigo = normCodigo();
-    if (codigo.length !== 4) {
-      setRes('❌ Informe um código com 4 caracteres.', 'err');
-      btnCheckin.disabled = true;
+  async function loadEventName() {
+    if (!eventoId) {
+      meta.innerHTML = `❌ Falta <code>evento_id</code> na URL.`;
+      title.textContent = 'Recepção';
+      btnValidar.disabled = true;
       return;
     }
+    if (!WEB_APP_URL || WEB_APP_URL.includes('COLE_AQUI')) {
+      meta.innerHTML = `❌ Configure o <code>WEB_APP_URL</code>.`;
+      btnValidar.disabled = true;
+      return;
+    }
+
+    meta.textContent = `Evento ID: ${eventoId} • carregando…`;
+    try {
+      const data = await fetchJson(`${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}&ts=${Date.now()}`);
+      if (data.ok) {
+        title.textContent = `Recepção — ${data.nome_evento}`;
+        meta.textContent = `Evento ID: ${eventoId}`;
+        btnValidar.disabled = false;
+      } else {
+        title.textContent = 'Recepção';
+        meta.innerHTML = `❌ ${data.error}`;
+        btnValidar.disabled = true;
+      }
+    } catch (err) {
+      title.textContent = 'Recepção';
+      meta.innerHTML = `❌ Falha ao carregar evento. <small>${String(err)}</small>`;
+      btnValidar.disabled = true;
+    }
+  }
+
+  async function validar(silent=false) {
+    const codigo = String(codigoEl.value||'').trim().toUpperCase();
+    codigoEl.value = codigo;
+
+    panel.style.display = 'none';
+    lastValidated = null;
+    btnCheckin.disabled = true;
+
+    if (!eventoId) { setStatus('❌ Falta <b>evento_id</b> na URL.', 'err'); return; }
+    if (!codigo || codigo.length !== 4) { setStatus('❌ Informe um código com 4 caracteres.', 'err'); return; }
+
+    if (!silent) setStatus('<span class="spin"></span>Validando código...', '');
 
     btnValidar.disabled = true;
-    btnCheckin.disabled = true;
-    setRes('Validando...', '');
 
-    const url = `${WEB_APP_URL}?action=validar&evento_id=${encodeURIComponent(eventoId)}&codigo=${encodeURIComponent(codigo)}`;
-    const res = await fetch(url);
-    const data = await res.json();
+    try {
+      const url = `${WEB_APP_URL}?action=validar&evento_id=${encodeURIComponent(eventoId)}&codigo=${encodeURIComponent(codigo)}&ts=${Date.now()}`;
+      const data = await fetchJson(url);
 
-    if (!data.ok) {
-      setRes('❌ Código não encontrado para este evento.', 'err');
+      if (!data.ok) {
+        const msg = data.error === 'CODIGO_NAO_ENCONTRADO'
+          ? '❌ Código não encontrado para este evento.'
+          : `❌ Erro: ${data.error}`;
+        setStatus(msg + (data.details ? `<br><small>${data.details}</small>` : ''), 'err');
+        btnValidar.disabled = false;
+        return;
+      }
+
+      pNome.textContent = data.inscrito.nome || '—';
+      pTurno.textContent = turnoLabel(data.inscrito.turno);
+      pCpf.textContent = maskCpf(data.inscrito.cpf);
+      pEmail.textContent = data.inscrito.email || '—';
+
+      const feito = !!(data.checkin && data.checkin.feito);
+      pCheckin.textContent = feito
+        ? `✅ Check-in já realizado ${data.checkin.em ? 'em ' + new Date(data.checkin.em).toLocaleString() : ''}`
+        : '🟡 Check-in pendente';
+
+      panel.style.display = 'block';
+      btnCheckin.disabled = feito;
+
+      lastValidated = { codigo, checkinFeito: feito };
+
+      setStatus('✅ Código válido para este evento.', 'ok');
       btnValidar.disabled = false;
-      return;
+
+    } catch (err) {
+      setStatus(`❌ Falha ao validar.<br><small>${String(err)}</small>`, 'err');
+      btnValidar.disabled = false;
     }
-
-    const i = data.inscricao;
-    const ja = data.ja_checkin;
-
-    setRes(
-      `✅ <span class="big">${i.codigo}</span><br>` +
-      `Nome: <b>${i.nome}</b><br>` +
-      `Turno: <b>${turnoLabel(i.turno)}</b><br>` +
-      (ja ? `<br>⚠️ <b>Já fez check-in</b> em: ${i.checkin_em}` : `<br>Pronto para confirmar check-in.`),
-      ja ? 'err' : 'ok'
-    );
-
-    btnValidar.disabled = false;
-    btnCheckin.disabled = ja;
   }
 
   async function checkin() {
-    if (!ensureEvento()) return;
-
-    const codigo = normCodigo();
-    if (codigo.length !== 4) {
-      setRes('❌ Informe um código com 4 caracteres.', 'err');
+    if (!lastValidated || !lastValidated.codigo) {
+      setStatus('❌ Valide um código antes de confirmar o check-in.', 'err');
+      return;
+    }
+    if (lastValidated.checkinFeito) {
+      setStatus('⚠️ Check-in já realizado.', 'err');
       return;
     }
 
     btnCheckin.disabled = true;
-    setRes('Confirmando check-in...', '');
+    setStatus('<span class="spin"></span>Confirmando check-in...', '');
 
-    const atendente = (document.getElementById('atendente').value || '').trim();
+    try {
+      const form = new URLSearchParams();
+      form.set('action','checkin');
+      form.set('evento_id', eventoId);
+      form.set('codigo', lastValidated.codigo);
+      form.set('operador', 'recepcao');
 
-    const res = await fetch(WEB_APP_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action: 'checkin', evento_id: eventoId, codigo, atendente })
-    });
+      const data = await fetchJson(WEB_APP_URL, { method:'POST', body: form });
 
-    const data = await res.json();
+      if (!data.ok) {
+        const msg = data.error === 'CHECKIN_JA_REALIZADO'
+          ? `⚠️ ${data.details || 'Check-in já realizado.'}`
+          : `❌ ${data.error}`;
+        setStatus(msg, data.error === 'CHECKIN_JA_REALIZADO' ? 'err' : 'err');
+        btnCheckin.disabled = false;
+        return;
+      }
 
-    if (!data.ok) {
-      setRes('❌ Falha no check-in: ' + (data.error || 'erro'), 'err');
+      setStatus('✅ Check-in confirmado com sucesso!', 'ok');
+      await validar(true);
+
+    } catch (err) {
+      setStatus(`❌ Falha ao confirmar check-in.<br><small>${String(err)}</small>`, 'err');
       btnCheckin.disabled = false;
-      return;
     }
-
-    if (data.message === 'JA_CHECKIN') {
-      setRes('⚠️ Já estava em check-in.', 'err');
-      await validar();
-      return;
-    }
-
-    setRes(
-      `✅ Check-in realizado!<br>` +
-      `Código: <b>${data.inscricao.codigo}</b><br>` +
-      `Nome: <b>${data.inscricao.nome}</b><br>` +
-      `Turno: <b>${turnoLabel(data.inscricao.turno)}</b><br>` +
-      `Horário: <b>${data.inscricao.checkin_em}</b>`,
-      'ok'
-    );
-
-    document.getElementById('codigo').value = '';
   }
 
-  document.getElementById('codigo').addEventListener('input', normCodigo);
-  document.getElementById('codigo').addEventListener('keydown', (e) => {
+  function limpar() {
+    codigoEl.value = '';
+    panel.style.display = 'none';
+    lastValidated = null;
+    btnCheckin.disabled = true;
+    setStatus('Informe o código e clique em Validar.', '');
+    codigoEl.focus();
+  }
+
+  // UX: Enter valida
+  codigoEl.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') validar();
   });
 
-  ensureEvento();
-  setRes('Digite o código e clique em Validar.', '');
+  // manter uppercase e só A-Z0-9
+  codigoEl.addEventListener('input', () => {
+    codigoEl.value = codigoEl.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
+  });
+
+  window.addEventListener('DOMContentLoaded', loadEventName);
 </script>
 </body>
 </html>
