@@ -1,385 +1,158 @@
 <!doctype html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>Recepção — Check-in</title>
   <style>
-    :root{
-      --bg1:#080d18; --bg2:#0b1630;
-      --card: rgba(255,255,255,.08);
-      --card2: rgba(255,255,255,.06);
-      --stroke: rgba(255,255,255,.14);
-      --text: rgba(255,255,255,.92);
-      --muted: rgba(255,255,255,.70);
-      --ok:#38d39f; --err:#ff5a7a; --warn:#ffd36e;
-      --shadow: 0 18px 60px rgba(0,0,0,.45);
-      --radius: 18px;
-    }
-    *{box-sizing:border-box}
-    body{
-      margin:0;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      color:var(--text);
-      background: radial-gradient(1100px 520px at 20% 10%, #1a2a57 0%, transparent 60%),
-                  radial-gradient(900px 520px at 85% 0%, #2b1a57 0%, transparent 55%),
-                  linear-gradient(160deg, var(--bg1), var(--bg2));
-      min-height:100vh;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      padding:28px 16px;
-    }
-    .wrap{ width:min(980px,100%); display:grid; grid-template-columns: 1fr 1fr; gap:18px;}
-    @media (max-width: 900px){ .wrap{grid-template-columns:1fr} }
-    .card{
-      border:1px solid var(--stroke);
-      background: linear-gradient(180deg, var(--card), var(--card2));
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      backdrop-filter: blur(10px);
-      padding:22px;
-    }
-    .badge{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:8px 12px; border-radius:999px;
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.18);
-      color:var(--muted);
-      font-weight:800; font-size:12px;
-    }
-    h1{ margin:14px 0 6px; font-size:30px; letter-spacing:-.5px; }
-    p{ margin:0; color:var(--muted); font-size:14px; line-height:1.55; }
-    label{ display:block; font-size:12px; color:var(--muted); margin:12px 0 6px; }
-    input{
-      width:100%;
-      padding:14px 12px;
-      border-radius: 14px;
-      border:1px solid var(--stroke);
-      background: rgba(0,0,0,.22);
-      color: var(--text);
-      outline:none;
-      transition: .15s ease;
-      font-weight:900;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-      font-size:16px;
-    }
-    input::placeholder{ color: rgba(255,255,255,.45); letter-spacing:0; text-transform:none; font-weight:600; }
-    input:focus{ border-color: rgba(255,255,255,.28); transform: translateY(-1px); }
-    .row{ display:flex; gap:10px; flex-wrap:wrap; margin-top:12px; }
-    button{
-      flex:1;
-      min-width: 220px;
-      padding:12px 14px;
-      border:0;
-      border-radius: 14px;
-      font-weight:1000;
-      letter-spacing:.2px;
-      color:#06111f;
-      background: linear-gradient(135deg, #62f0c8, #4aa3ff);
-      cursor:pointer;
-      box-shadow: 0 12px 35px rgba(74,163,255,.18);
-      transition:.12s ease;
-    }
-    button:disabled{ opacity:.55; cursor:not-allowed; transform:none; box-shadow:none; }
-    .ghost{
-      background: rgba(0,0,0,.18);
-      color: var(--muted);
-      border:1px solid var(--stroke);
-      box-shadow:none;
-    }
-    .status{
-      border:1px solid var(--stroke);
-      border-radius: 14px;
-      padding:12px;
-      background: rgba(0,0,0,.18);
-      margin-top:14px;
-      display:flex; gap:10px; align-items:flex-start;
-    }
-    .dot{ width:10px; height:10px; border-radius:99px; margin-top:5px; background: var(--warn); box-shadow: 0 0 0 4px rgba(255,211,110,.15); }
-    .status.ok .dot{ background: var(--ok); box-shadow: 0 0 0 4px rgba(56,211,159,.15); }
-    .status.err .dot{ background: var(--err); box-shadow: 0 0 0 4px rgba(255,90,122,.15); }
-    .msg{ font-size:13px; color:var(--muted); line-height:1.45; }
-    .panel{
-      border:1px solid var(--stroke);
-      border-radius: 14px;
-      padding:14px;
-      background: rgba(0,0,0,.20);
-      margin-top:14px;
-      display:none;
-    }
-    .kv{ display:grid; grid-template-columns: 140px 1fr; gap:8px 12px; }
-    .k{ color: rgba(255,255,255,.65); font-size:12px; }
-    .v{ font-weight:850; }
-    .tag{
-      display:inline-flex; padding:6px 10px; border-radius:999px;
-      border:1px solid var(--stroke); background: rgba(0,0,0,.20);
-      font-size:12px; color: rgba(255,255,255,.80);
-      margin-top:10px;
-    }
-    .spin{
-      width:14px; height:14px; border-radius:999px;
-      border:2px solid rgba(255,255,255,.18);
-      border-top-color: rgba(255,255,255,.85);
-      animation: spin 0.8s linear infinite;
-      display:inline-block;
-      vertical-align:-2px;
-      margin-right:8px;
-    }
-    @keyframes spin{ to { transform: rotate(360deg); } }
-    code{
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
-      font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 8px;
-      border: 1px solid var(--stroke);
-      background: rgba(0,0,0,.20);
-    }
+    :root{--bg1:#0b1220;--bg2:#0f1b33;--card:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.14);--txt:rgba(255,255,255,.92);--mut:rgba(255,255,255,.7);--ok:#38d39f;--err:#ff5a7a;}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--txt);background:radial-gradient(1100px 560px at 20% 0%, #1a2a57 0%, transparent 60%),linear-gradient(160deg,var(--bg1),var(--bg2));min-height:100vh;padding:18px}
+    .wrap{width:min(980px,100%);margin:0 auto;display:grid;gap:14px}
+    .card{border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card),rgba(255,255,255,.05));border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+    h1{margin:0 0 6px;font-size:24px} p{margin:0;color:var(--mut);font-size:13px}
+    label{display:block;color:var(--mut);font-size:12px;margin:10px 0 6px}
+    input,select{width:100%;padding:12px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--txt);outline:none}
+    button{padding:10px 12px;border:0;border-radius:14px;font-weight:900;color:#06111f;background:linear-gradient(135deg,#62f0c8,#4aa3ff);cursor:pointer}
+    .ghost{background:rgba(0,0,0,.18);color:var(--mut);border:1px solid var(--stroke)}
+    .msg{margin-top:10px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.18);color:var(--mut);font-size:13px}
+    .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+    @media(max-width:720px){.grid{grid-template-columns:1fr}}
   </style>
 </head>
 <body>
-  <div class="wrap">
-    <section class="card">
-      <div class="badge">🎫 Recepção • Validação & Check-in</div>
-      <h1 id="title">Recepção</h1>
-      <p id="meta">Carregando evento…</p>
-
-      <label for="codigo">Código do participante</label>
-      <input id="codigo" maxlength="4" placeholder="Ex.: AB12" autocomplete="off" />
-
-      <div class="row">
-        <button id="btnValidar" type="button" onclick="validar()">Validar</button>
-        <button class="ghost" id="btnLimpar" type="button" onclick="limpar()">Limpar</button>
+<div class="wrap">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div>
+        <h1>Recepção — Check-in</h1>
+        <p id="me"></p>
       </div>
-
-      <div class="status" id="statusBox">
-        <div class="dot"></div>
-        <div class="msg" id="statusMsg">Informe o código e clique em Validar.</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="ghost" onclick="goto('admin.html')">Admin</button>
+        <button class="ghost" onclick="goto('atendimento.html')">Atendimento</button>
+        <button class="ghost" onclick="logout()">Sair</button>
       </div>
-    </section>
-
-    <section class="card">
-      <div class="badge">✅ Resultado</div>
-      <h1 style="margin-bottom:6px;">Participante</h1>
-      <p>Validação por evento: o código é único apenas dentro do mesmo evento.</p>
-
-      <div class="panel" id="panel">
-        <div class="kv">
-          <div class="k">Nome</div><div class="v" id="pNome">—</div>
-          <div class="k">Turno</div><div class="v" id="pTurno">—</div>
-          <div class="k">CPF</div><div class="v" id="pCpf">—</div>
-          <div class="k">E-mail</div><div class="v" id="pEmail">—</div>
-        </div>
-        <div class="tag" id="pCheckin">—</div>
-
-        <div class="row" style="margin-top:12px;">
-          <button id="btnCheckin" type="button" onclick="checkin()">Confirmar Check-in</button>
-          <button class="ghost" type="button" onclick="validar(true)">Revalidar</button>
-        </div>
-      </div>
-    </section>
+    </div>
+    <div id="msg" class="msg">Carregando…</div>
   </div>
 
+  <div class="card">
+    <label>Evento</label>
+    <select id="evSel"></select>
+    <button class="ghost" style="margin-top:10px" onclick="loadEvents()">Atualizar eventos</button>
+
+    <div class="grid" style="margin-top:10px">
+      <div>
+        <label>Código (4 caracteres)</label>
+        <input id="codigo" maxlength="4" placeholder="AB12" />
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:10px">
+        <button onclick="validate()">Validar</button>
+        <button class="ghost" onclick="clearAll()">Limpar</button>
+      </div>
+    </div>
+
+    <div id="card" class="msg" style="display:none"></div>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+      <button id="btnCheckin" onclick="checkin()" disabled>Confirmar Check-in</button>
+    </div>
+  </div>
+</div>
+
 <script>
-  const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbzxKlF3EY9A49Ibw96lUenawAblkgKUlprm_agycWYE0IELaKnhKKosDmfuXSeRVBVX/exec";
+  const WEB_APP_URL = "COLE_AQUI_SUA_URL_DO_WEB_APP";
+  const token = localStorage.getItem('auth_token') || '';
+  const role = localStorage.getItem('auth_role') || '';
+  const username = localStorage.getItem('auth_username') || '';
+  document.getElementById('me').textContent = `Logado: ${username} (${role})`;
+  function goto(p){ location.href=p; }
+  function logout(){ localStorage.clear(); location.href='login.html'; }
+  if(!token) logout();
 
-  const qs = new URLSearchParams(location.search);
-  const eventoId = qs.get('evento_id');
+  const msgEl=document.getElementById('msg');
+  function setMsg(t,cls=''){ msgEl.className='msg '+cls; msgEl.textContent=t; }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  const title = document.getElementById('title');
-  const meta = document.getElementById('meta');
-
-  const codigoEl = document.getElementById('codigo');
-
-  const statusBox = document.getElementById('statusBox');
-  const statusMsg = document.getElementById('statusMsg');
-
-  const panel = document.getElementById('panel');
-  const pNome = document.getElementById('pNome');
-  const pTurno = document.getElementById('pTurno');
-  const pCpf = document.getElementById('pCpf');
-  const pEmail = document.getElementById('pEmail');
-  const pCheckin = document.getElementById('pCheckin');
-
-  const btnValidar = document.getElementById('btnValidar');
-  const btnCheckin = document.getElementById('btnCheckin');
-
-  let lastValidated = null; // guarda {codigo, checkinFeito}
-
-  function setStatus(html, type='') {
-    statusBox.className = 'status' + (type ? ` ${type}` : '');
-    statusMsg.innerHTML = html;
+  async function api(obj){
+    const form = new URLSearchParams();
+    Object.entries(obj).forEach(([k,v])=>form.set(k,v));
+    const res = await fetch(WEB_APP_URL,{method:'POST',body:form});
+    return await res.json();
   }
 
-  function maskCpf(cpf) {
-    const d = String(cpf||'').replace(/\D/g,'');
-    if (d.length !== 11) return cpf || '';
-    return d.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, '$1.$2.$3-$4');
+  let lastValid = null;
+
+  async function loadEvents(){
+    setMsg('Carregando eventos...');
+    const data = await api({ action:'events_list', token, include_inactive:'false' });
+    if(!data.ok){ setMsg('Erro: '+data.error,'err'); return; }
+    const sel=document.getElementById('evSel');
+    sel.innerHTML='';
+    data.events.forEach(ev=>{
+      const o=document.createElement('option');
+      o.value=ev.event_id; o.textContent=ev.nome_evento;
+      sel.appendChild(o);
+    });
+    setMsg('OK.','ok');
   }
 
-  function turnoLabel(t) {
-    t = String(t||'').toLowerCase();
-    return t === 'tarde' ? 'Tarde' : t === 'noite' ? 'Noite' : t === 'integral' ? 'Integral' : t;
-  }
+  async function validate(){
+    const event_id = document.getElementById('evSel').value;
+    let codigo = document.getElementById('codigo').value.trim().toUpperCase();
+    document.getElementById('codigo').value = codigo;
 
-  async function fetchJson(url, opts={}, timeoutMs=45000) {
-    const controller = new AbortController();
-    const t = setTimeout(()=>controller.abort(), timeoutMs);
-    try {
-      const res = await fetch(url, {...opts, signal: controller.signal});
-      const text = await res.text();
-      try { return JSON.parse(text); }
-      catch { throw new Error(`Resposta não é JSON (status ${res.status}). Prévia: ${text.slice(0,120)}`); }
-    } finally {
-      clearTimeout(t);
-    }
-  }
+    if(!event_id){ setMsg('Selecione o evento.','err'); return; }
+    if(codigo.length!==4){ setMsg('Código inválido (4 caracteres).','err'); return; }
 
-  async function loadEventName() {
-    if (!eventoId) {
-      meta.innerHTML = `❌ Falta <code>evento_id</code> na URL.`;
-      title.textContent = 'Recepção';
-      btnValidar.disabled = true;
-      return;
-    }
-    if (!WEB_APP_URL || WEB_APP_URL.includes('COLE_AQUI')) {
-      meta.innerHTML = `❌ Configure o <code>WEB_APP_URL</code>.`;
-      btnValidar.disabled = true;
+    setMsg('Validando...');
+    const data = await api({ action:'validate_code', token, event_id, codigo });
+    if(!data.ok){
+      setMsg('Erro: '+data.error,'err');
+      document.getElementById('card').style.display='none';
+      document.getElementById('btnCheckin').disabled=true;
+      lastValid=null;
       return;
     }
 
-    meta.textContent = `Evento ID: ${eventoId} • carregando…`;
-    try {
-      const data = await fetchJson(`${WEB_APP_URL}?evento_id=${encodeURIComponent(eventoId)}&ts=${Date.now()}`);
-      if (data.ok) {
-        title.textContent = `Recepção — ${data.nome_evento}`;
-        meta.textContent = `Evento ID: ${eventoId}`;
-        btnValidar.disabled = false;
-      } else {
-        title.textContent = 'Recepção';
-        meta.innerHTML = `❌ ${data.error}`;
-        btnValidar.disabled = true;
-      }
-    } catch (err) {
-      title.textContent = 'Recepção';
-      meta.innerHTML = `❌ Falha ao carregar evento. <small>${String(err)}</small>`;
-      btnValidar.disabled = true;
-    }
+    lastValid = { event_id, codigo, checkinFeito: !!(data.checkin && data.checkin.feito) };
+
+    const c=document.getElementById('card');
+    c.style.display='block';
+    c.className='msg '+(lastValid.checkinFeito ? 'err':'ok');
+    c.innerHTML =
+      `<b>${esc(data.inscrito.nome)}</b><br>`+
+      `Dia: <b>${esc(data.inscrito.day_label)}</b><br>`+
+      `E-mail: ${esc(data.inscrito.email)}<br>`+
+      `Código: <b>${esc(data.inscrito.codigo)}</b><br>`+
+      (lastValid.checkinFeito ? `<br>⚠️ Check-in já realizado.` : `<br>✅ Check-in pendente.`);
+
+    document.getElementById('btnCheckin').disabled = lastValid.checkinFeito;
+    setMsg('OK.','ok');
   }
 
-  async function validar(silent=false) {
-    const codigo = String(codigoEl.value||'').trim().toUpperCase();
-    codigoEl.value = codigo;
-
-    panel.style.display = 'none';
-    lastValidated = null;
-    btnCheckin.disabled = true;
-
-    if (!eventoId) { setStatus('❌ Falta <b>evento_id</b> na URL.', 'err'); return; }
-    if (!codigo || codigo.length !== 4) { setStatus('❌ Informe um código com 4 caracteres.', 'err'); return; }
-
-    if (!silent) setStatus('<span class="spin"></span>Validando código...', '');
-
-    btnValidar.disabled = true;
-
-    try {
-      const url = `${WEB_APP_URL}?action=validar&evento_id=${encodeURIComponent(eventoId)}&codigo=${encodeURIComponent(codigo)}&ts=${Date.now()}`;
-      const data = await fetchJson(url);
-
-      if (!data.ok) {
-        const msg = data.error === 'CODIGO_NAO_ENCONTRADO'
-          ? '❌ Código não encontrado para este evento.'
-          : `❌ Erro: ${data.error}`;
-        setStatus(msg + (data.details ? `<br><small>${data.details}</small>` : ''), 'err');
-        btnValidar.disabled = false;
-        return;
-      }
-
-      pNome.textContent = data.inscrito.nome || '—';
-      pTurno.textContent = turnoLabel(data.inscrito.turno);
-      pCpf.textContent = maskCpf(data.inscrito.cpf);
-      pEmail.textContent = data.inscrito.email || '—';
-
-      const feito = !!(data.checkin && data.checkin.feito);
-      pCheckin.textContent = feito
-        ? `✅ Check-in já realizado ${data.checkin.em ? 'em ' + new Date(data.checkin.em).toLocaleString() : ''}`
-        : '🟡 Check-in pendente';
-
-      panel.style.display = 'block';
-      btnCheckin.disabled = feito;
-
-      lastValidated = { codigo, checkinFeito: feito };
-
-      setStatus('✅ Código válido para este evento.', 'ok');
-      btnValidar.disabled = false;
-
-    } catch (err) {
-      setStatus(`❌ Falha ao validar.<br><small>${String(err)}</small>`, 'err');
-      btnValidar.disabled = false;
-    }
+  async function checkin(){
+    if(!lastValid){ setMsg('Valide um código antes.','err'); return; }
+    setMsg('Confirmando check-in...');
+    const data = await api({ action:'checkin', token, event_id:lastValid.event_id, codigo:lastValid.codigo });
+    if(!data.ok){ setMsg('Erro: '+data.error,'err'); return; }
+    setMsg('Check-in confirmado!','ok');
+    await validate();
   }
 
-  async function checkin() {
-    if (!lastValidated || !lastValidated.codigo) {
-      setStatus('❌ Valide um código antes de confirmar o check-in.', 'err');
-      return;
-    }
-    if (lastValidated.checkinFeito) {
-      setStatus('⚠️ Check-in já realizado.', 'err');
-      return;
-    }
-
-    btnCheckin.disabled = true;
-    setStatus('<span class="spin"></span>Confirmando check-in...', '');
-
-    try {
-      const form = new URLSearchParams();
-      form.set('action','checkin');
-      form.set('evento_id', eventoId);
-      form.set('codigo', lastValidated.codigo);
-      form.set('operador', 'recepcao');
-
-      const data = await fetchJson(WEB_APP_URL, { method:'POST', body: form });
-
-      if (!data.ok) {
-        const msg = data.error === 'CHECKIN_JA_REALIZADO'
-          ? `⚠️ ${data.details || 'Check-in já realizado.'}`
-          : `❌ ${data.error}`;
-        setStatus(msg, data.error === 'CHECKIN_JA_REALIZADO' ? 'err' : 'err');
-        btnCheckin.disabled = false;
-        return;
-      }
-
-      setStatus('✅ Check-in confirmado com sucesso!', 'ok');
-      await validar(true);
-
-    } catch (err) {
-      setStatus(`❌ Falha ao confirmar check-in.<br><small>${String(err)}</small>`, 'err');
-      btnCheckin.disabled = false;
-    }
+  function clearAll(){
+    document.getElementById('codigo').value='';
+    document.getElementById('card').style.display='none';
+    document.getElementById('btnCheckin').disabled=true;
+    lastValid=null;
+    setMsg('Pronto.','');
   }
 
-  function limpar() {
-    codigoEl.value = '';
-    panel.style.display = 'none';
-    lastValidated = null;
-    btnCheckin.disabled = true;
-    setStatus('Informe o código e clique em Validar.', '');
-    codigoEl.focus();
-  }
-
-  // UX: Enter valida
-  codigoEl.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') validar();
+  document.getElementById('codigo').addEventListener('input', (e)=>{
+    e.target.value = e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
   });
 
-  // manter uppercase e só A-Z0-9
-  codigoEl.addEventListener('input', () => {
-    codigoEl.value = codigoEl.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,4);
-  });
-
-  window.addEventListener('DOMContentLoaded', loadEventName);
+  loadEvents();
 </script>
 </body>
 </html>
