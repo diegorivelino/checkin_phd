@@ -1,0 +1,225 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Atendimento — Matrícula</title>
+  <style>
+    :root{--bg1:#0b1220;--bg2:#0f1b33;--card:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.14);--txt:rgba(255,255,255,.92);--mut:rgba(255,255,255,.7);--ok:#38d39f;--err:#ff5a7a;}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--txt);background:radial-gradient(1100px 560px at 20% 0%, #1a2a57 0%, transparent 60%),linear-gradient(160deg,var(--bg1),var(--bg2));min-height:100vh;padding:18px}
+    .wrap{width:min(980px,100%);margin:0 auto;display:grid;gap:14px}
+    .card{border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card),rgba(255,255,255,.05));border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+    h1{margin:0 0 6px;font-size:24px} p{margin:0;color:var(--mut);font-size:13px}
+    label{display:block;color:var(--mut);font-size:12px;margin:10px 0 6px}
+    input,select{width:100%;padding:12px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--txt);outline:none}
+    button{padding:10px 12px;border:0;border-radius:14px;font-weight:900;color:#06111f;background:linear-gradient(135deg,#62f0c8,#4aa3ff);cursor:pointer}
+    .ghost{background:rgba(0,0,0,.18);color:var(--mut);border:1px solid var(--stroke)}
+    .msg{margin-top:10px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.18);color:var(--mut);font-size:13px}
+    .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+    .code{font-size:34px;font-weight:1000;letter-spacing:4px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid rgba(255,255,255,.10);padding:10px;text-align:left;font-size:13px}
+    th{color:rgba(255,255,255,.75);font-size:12px}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;align-items:center">
+      <div>
+        <h1>Atendimento — Matrícula</h1>
+        <p id="me"></p>
+      </div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap">
+        <button class="ghost" onclick="goto('admin.html')">Admin</button>
+        <button class="ghost" onclick="goto('recepcao.html')">Recepção</button>
+        <button class="ghost" onclick="logout()">Sair</button>
+      </div>
+    </div>
+    <div id="msg" class="msg">Carregando…</div>
+  </div>
+
+  <div class="card">
+    <label>Evento</label>
+    <select id="evSel" onchange="loadStatus()"></select>
+    <button class="ghost" style="margin-top:10px" onclick="loadEvents()">Atualizar eventos</button>
+
+    <div id="statusBox"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">Cadastrar inscrição</h2>
+
+    <label>Dia</label>
+    <select id="daySel"></select>
+
+    <label>Nome</label>
+    <input id="nome" placeholder="Nome completo"/>
+
+    <label>CPF</label>
+    <input id="cpf" placeholder="000.000.000-00" inputmode="numeric"/>
+
+    <label>E-mail</label>
+    <input id="email" placeholder="email@dominio.com" type="email"/>
+
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+      <button id="btn" onclick="register()">Confirmar</button>
+      <button class="ghost" onclick="clearForm()">Limpar</button>
+    </div>
+
+    <div id="result" class="msg" style="display:none"></div>
+  </div>
+</div>
+
+<script>
+  const WEB_APP_URL = "COLE_AQUI_SUA_URL_DO_WEB_APP";
+  const token = localStorage.getItem('auth_token') || '';
+  const role = localStorage.getItem('auth_role') || '';
+  const username = localStorage.getItem('auth_username') || '';
+  document.getElementById('me').textContent = `Logado: ${username} (${role})`;
+
+  function goto(p){ location.href=p; }
+  function logout(){ localStorage.clear(); location.href='login.html'; }
+  if(!token) logout();
+
+  const msgEl = document.getElementById('msg');
+  function setMsg(t, cls=''){ msgEl.className='msg '+cls; msgEl.textContent=t; }
+
+  async function api(formObj){
+    const form = new URLSearchParams();
+    Object.entries(formObj).forEach(([k,v])=>form.set(k, v));
+    const res = await fetch(WEB_APP_URL, { method:'POST', body: form });
+    return await res.json();
+  }
+
+  async function loadEvents(){
+    setMsg('Carregando eventos...');
+    const data = await api({ action:'events_list', token, include_inactive:'false' });
+    if(!data.ok){ setMsg('Erro: '+data.error,'err'); return; }
+
+    const sel = document.getElementById('evSel');
+    sel.innerHTML='';
+    data.events.forEach(ev=>{
+      const o=document.createElement('option');
+      o.value=ev.event_id;
+      o.textContent=ev.nome_evento;
+      sel.appendChild(o);
+    });
+    setMsg('OK.','ok');
+    if(sel.value) loadStatus();
+  }
+
+  async function loadStatus(){
+    const eventId = document.getElementById('evSel').value;
+    if(!eventId) return;
+
+    const res = await fetch(`${WEB_APP_URL}?action=status&event_id=${encodeURIComponent(eventId)}&ts=${Date.now()}`);
+    const data = await res.json();
+    if(!data.ok){ setMsg('Erro status: '+data.error,'err'); return; }
+
+    const box = document.getElementById('statusBox');
+    const days = data.dias || [];
+    let html = `<h3 style="margin:12px 0 6px">${data.nome_evento}</h3>`;
+    html += `<table><thead><tr><th>Dia</th><th>Vagas</th><th>Inscritos</th><th>Restantes</th></tr></thead><tbody>`;
+    days.forEach(d=>{
+      html += `<tr><td>${esc(d.day_label)}</td><td>${d.vagas}</td><td>${d.inscritos}</td><td><b>${d.restantes}</b></td></tr>`;
+    });
+    html += `</tbody></table>`;
+    box.innerHTML = html;
+
+    // day select (somente com restantes > 0)
+    const daySel = document.getElementById('daySel');
+    daySel.innerHTML='';
+    days.filter(d=>d.restantes>0).forEach(d=>{
+      const o=document.createElement('option');
+      o.value=d.day_label;
+      o.textContent=`${d.day_label} (restam ${d.restantes})`;
+      daySel.appendChild(o);
+    });
+    document.getElementById('btn').disabled = daySel.options.length===0;
+
+    setMsg('Vagas atualizadas.', 'ok');
+  }
+
+  function normCpf(v){ return (v||'').replace(/\D/g,''); }
+  function validCpf(c){ return /^\d{11}$/.test(c) && !/^(\d)\1{10}$/.test(c); }
+  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e||'').trim()); }
+
+  async function register(){
+    const btn = document.getElementById('btn');
+    btn.disabled = true;
+
+    const event_id = document.getElementById('evSel').value;
+    const day_label = document.getElementById('daySel').value;
+    const nome = document.getElementById('nome').value.trim();
+    const cpf = document.getElementById('cpf').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    const cpfN = normCpf(cpf);
+    if(nome.length<2){ showResult('Nome inválido.','err'); btn.disabled=false; return; }
+    if(!validCpf(cpfN)){ showResult('CPF inválido.','err'); btn.disabled=false; return; }
+    if(!validEmail(email)){ showResult('E-mail inválido.','err'); btn.disabled=false; return; }
+
+    showResult('Confirmando inscrição...', '');
+
+    try{
+      const form = new URLSearchParams();
+      form.set('action','register');
+      form.set('event_id', event_id);
+      form.set('day_label', day_label);
+      form.set('nome', nome);
+      form.set('cpf', cpf);
+      form.set('email', email);
+
+      const res = await fetch(WEB_APP_URL, { method:'POST', body: form });
+      const data = await res.json();
+
+      if(!data.ok){
+        showResult('Erro: '+data.error, 'err');
+        btn.disabled=false;
+        if(data.error==='SEM_VAGAS') loadStatus();
+        return;
+      }
+
+      showResult(`✅ Inscrição confirmada!<br><div class="code">${data.codigo}</div><div class="tiny">E-mail pode levar até 1 minuto.</div>`, 'ok');
+
+      // ✅ melhoria: limpar campos para novo registro
+      clearForm(true);
+      await loadStatus();
+
+      btn.disabled=false;
+
+    }catch(e){
+      showResult('Falha: '+e, 'err');
+      btn.disabled=false;
+    }
+  }
+
+  function clearForm(keepDay=false){
+    document.getElementById('nome').value='';
+    document.getElementById('cpf').value='';
+    document.getElementById('email').value='';
+    if(!keepDay) document.getElementById('daySel').selectedIndex=0;
+  }
+
+  function showResult(html, cls){
+    const el = document.getElementById('result');
+    el.style.display='block';
+    el.className='msg '+cls;
+    el.innerHTML=html;
+  }
+
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // máscara CPF
+  document.getElementById('cpf').addEventListener('input', (e) => {
+    const v = e.target.value.replace(/\D/g,'').slice(0,11);
+    const p = v.replace(/^(\d{3})(\d)/, '$1.$2')
+               .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+               .replace(/\.(\d{3})(\d)/, '.$1-$2');
+    e.target.value = p;
+  });
+
+  loadEvents();
+</script>
+</body>
+</html>
