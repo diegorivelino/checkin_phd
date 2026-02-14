@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Admin — Eventos</title>
+  <style>
+    :root{--bg1:#0b1220;--bg2:#0f1b33;--card:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.14);--txt:rgba(255,255,255,.92);--mut:rgba(255,255,255,.7);--ok:#38d39f;--err:#ff5a7a;--warn:#ffd36e;}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--txt);background:radial-gradient(1100px 560px at 20% 0%, #1a2a57 0%, transparent 60%),radial-gradient(900px 520px at 85% 0%, #2b1a57 0%, transparent 55%),linear-gradient(160deg,var(--bg1),var(--bg2));min-height:100vh;padding:18px}
+    .wrap{width:min(1100px,100%);margin:0 auto;display:grid;gap:14px}
+    .card{border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card),rgba(255,255,255,.05));border-radius:18px;padding:16px;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+    h1{margin:0 0 6px;font-size:26px} p{margin:0;color:var(--mut);font-size:13px;line-height:1.5}
+    .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+    label{display:block;color:var(--mut);font-size:12px;margin:10px 0 6px}
+    input, textarea, select{width:100%;padding:12px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--txt);outline:none}
+    textarea{min-height:120px;resize:vertical}
+    button{padding:10px 12px;border:0;border-radius:14px;font-weight:900;color:#06111f;background:linear-gradient(135deg,#62f0c8,#4aa3ff);cursor:pointer}
+    .ghost{background:rgba(0,0,0,.18);color:var(--mut);border:1px solid var(--stroke)}
+    .danger{background:linear-gradient(135deg,#ff7aa2,#ffd36e)}
+    .msg{margin-top:10px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.18);color:var(--mut);font-size:13px}
+    .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border-bottom:1px solid rgba(255,255,255,.10);padding:10px;text-align:left;font-size:13px}
+    th{color:rgba(255,255,255,.75);font-size:12px}
+    .tiny{font-size:12px;color:var(--mut)}
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h1>Admin — Eventos</h1>
+        <p>Crie eventos (modo DIA), edite vagas por dia, encerre evento e gere relatório.</p>
+        <p class="tiny" id="me"></p>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="goto('atendimento.html')">Atendimento</button>
+        <button class="ghost" onclick="goto('recepcao.html')">Recepção</button>
+        <button class="ghost" onclick="logout()">Sair</button>
+      </div>
+    </div>
+    <div id="msg" class="msg">Carregando…</div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">Criar evento (ID automático)</h2>
+    <div class="row">
+      <div style="flex:1;min-width:280px">
+        <label>Nome do evento</label>
+        <input id="evNome" placeholder="Ex.: Aulão Março"/>
+      </div>
+      <div style="flex:1;min-width:280px">
+        <label>Dias (um por linha) no formato <code>Dia 1=30</code> ou <code>2026-03-01=50</code></label>
+        <textarea id="evDias" placeholder="Dia 1=30&#10;Dia 2=30"></textarea>
+      </div>
+    </div>
+    <div class="row">
+      <button onclick="createEvent()">Criar evento</button>
+      <span class="tiny">Obs.: você poderá editar vagas/habilitar depois.</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="row" style="justify-content:space-between">
+      <div>
+        <h2 style="margin:0 0 4px">Gerenciar evento</h2>
+        <p class="tiny">Selecione um evento para editar dias e gerar relatório.</p>
+      </div>
+      <div class="row">
+        <button class="ghost" onclick="loadEvents(true)">Atualizar lista</button>
+      </div>
+    </div>
+
+    <label>Evento</label>
+    <select id="evSel" onchange="loadStatusAndDays()"></select>
+
+    <div id="daysBox"></div>
+
+    <div class="row" style="margin-top:10px">
+      <button class="danger" onclick="closeEvent()">Encerrar evento</button>
+      <button class="ghost" onclick="report()">Emitir relatório</button>
+      <button class="ghost" onclick="downloadCSV()">Baixar CSV</button>
+    </div>
+
+    <div id="reportBox"></div>
+  </div>
+
+  <div class="card">
+    <h2 style="margin:0 0 8px">Usuários</h2>
+    <p class="tiny">Crie usuários do sistema (ADMIN/USER). Senha mínima 6 caracteres.</p>
+    <div class="row">
+      <div style="flex:1;min-width:220px">
+        <label>Username</label>
+        <input id="uUsername" placeholder="ex: joao"/>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <label>Nome</label>
+        <input id="uNome" placeholder="João Silva"/>
+      </div>
+      <div style="width:160px">
+        <label>Role</label>
+        <select id="uRole">
+          <option>USER</option>
+          <option>ADMIN</option>
+        </select>
+      </div>
+      <div style="flex:1;min-width:220px">
+        <label>Senha</label>
+        <input id="uPass" type="password" placeholder="mín. 6"/>
+      </div>
+    </div>
+    <div class="row">
+      <button onclick="createUser()">Criar usuário</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const WEB_APP_URL = "COLE_AQUI_SUA_URL_DO_WEB_APP";
+  const token = localStorage.getItem('auth_token') || '';
+  const role = localStorage.getItem('auth_role') || '';
+  const username = localStorage.getItem('auth_username') || '';
+  document.getElementById('me').textContent = `Logado: ${username} (${role})`;
+
+  function goto(p){ location.href = p; }
+  function logout(){ localStorage.clear(); location.href='login.html'; }
+  if(!token) logout();
+
+  const msgEl = document.getElementById('msg');
+  function setMsg(t, cls=''){ msgEl.className='msg '+cls; msgEl.textContent=t; }
+
+  async function api(formObj){
+    const form = new URLSearchParams();
+    Object.entries(formObj).forEach(([k,v])=>form.set(k, v));
+    const res = await fetch(WEB_APP_URL, { method:'POST', body: form });
+    return await res.json();
+  }
+
+  let lastReport = null;
+
+  async function loadEvents(includeInactive=false){
+    setMsg('Carregando eventos...');
+    const data = await api({ action:'events_list', token, include_inactive: includeInactive ? 'true':'false' });
+    if(!data.ok){ setMsg('Erro: '+data.error, 'err'); return; }
+    const sel = document.getElementById('evSel');
+    sel.innerHTML = '';
+    data.events.forEach(ev=>{
+      const o=document.createElement('option');
+      o.value = ev.event_id;
+      o.textContent = `${ev.nome_evento} (${ev.ativo ? 'ativo':'inativo'})`;
+      sel.appendChild(o);
+    });
+    setMsg('OK.', 'ok');
+    if(sel.value) loadStatusAndDays();
+  }
+
+  async function createEvent(){
+    const nome_evento = document.getElementById('evNome').value.trim();
+    const days_text = document.getElementById('evDias').value.trim();
+    if(nome_evento.length < 2){ setMsg('Nome do evento inválido.', 'err'); return; }
+    if(!days_text){ setMsg('Informe os dias no formato Dia=Vagas.', 'err'); return; }
+
+    setMsg('Criando evento...');
+    const data = await api({ action:'event_create', token, nome_evento, days_text });
+    if(!data.ok){ setMsg('Erro: '+data.error, 'err'); return; }
+    setMsg('Evento criado: '+data.event_id, 'ok');
+    document.getElementById('evNome').value='';
+    document.getElementById('evDias').value='';
+    await loadEvents(true);
+    document.getElementById('evSel').value = data.event_id;
+    await loadStatusAndDays();
+  }
+
+  async function loadStatusAndDays(){
+    const event_id = document.getElementById('evSel').value;
+    if(!event_id) return;
+
+    // status público (GET)
+    const st = await fetch(`${WEB_APP_URL}?action=status&event_id=${encodeURIComponent(event_id)}&ts=${Date.now()}`);
+    const data = await st.json();
+    if(!data.ok){ setMsg('Erro status: '+data.error, 'err'); return; }
+
+    // days list é o próprio data.dias
+    const box = document.getElementById('daysBox');
+    box.innerHTML = `<h3 style="margin:12px 0 6px">Dias e vagas</h3>`;
+
+    const rows = data.dias || [];
+    if(rows.length===0){
+      box.innerHTML += `<div class="tiny">Nenhum dia habilitado.</div>`;
+      return;
+    }
+
+    const table = document.createElement('table');
+    table.innerHTML = `
+      <thead><tr>
+        <th>Dia</th><th>Vagas</th><th>Inscritos</th><th>Restantes</th><th>Habilitado</th><th>Ação</th>
+      </tr></thead>
+      <tbody></tbody>
+    `;
+    const tbody = table.querySelector('tbody');
+
+    rows.forEach(r=>{
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td>${r.day_label}</td>
+        <td><input data-k="vagas" style="width:110px" value="${r.vagas}" /></td>
+        <td>${r.inscritos}</td>
+        <td><b>${r.restantes}</b></td>
+        <td><input data-k="hab" type="checkbox" ${r.habilitado ? 'checked':''}/></td>
+        <td><button class="ghost">Salvar</button></td>
+      `;
+      tr.querySelector('button').onclick = async ()=>{
+        const vagas = tr.querySelector('input[data-k="vagas"]').value;
+        const habilitado = tr.querySelector('input[data-k="hab"]').checked ? 'true':'false';
+        setMsg('Salvando dia...');
+        const resp = await api({ action:'event_update_day', token, event_id, day_label: r.day_label, vagas, habilitado });
+        if(!resp.ok){ setMsg('Erro: '+resp.error, 'err'); return; }
+        setMsg('Dia atualizado.', 'ok');
+        await loadStatusAndDays();
+      };
+      tbody.appendChild(tr);
+    });
+
+    box.appendChild(table);
+    setMsg('Evento carregado.', 'ok');
+  }
+
+  async function closeEvent(){
+    const event_id = document.getElementById('evSel').value;
+    if(!event_id) return;
+    setMsg('Encerrando...');
+    const data = await api({ action:'event_close', token, event_id });
+    if(!data.ok){ setMsg('Erro: '+data.error, 'err'); return; }
+    setMsg('Evento encerrado.', 'ok');
+    await loadEvents(true);
+  }
+
+  async function report(){
+    const event_id = document.getElementById('evSel').value;
+    if(!event_id) return;
+    setMsg('Gerando relatório...');
+    const data = await api({ action:'event_report', token, event_id });
+    if(!data.ok){ setMsg('Erro: '+data.error, 'err'); return; }
+
+    lastReport = data;
+
+    const box = document.getElementById('reportBox');
+    const rows = data.rows || [];
+    let html = `<h3 style="margin:12px 0 6px">${escapeHtml(data.nome_evento)}</h3>`;
+    html += `<table><thead><tr><th>#</th><th>Nome</th><th>E-mail</th><th>Código</th></tr></thead><tbody>`;
+    rows.forEach((r,idx)=>{
+      html += `<tr><td>${idx+1}</td><td>${escapeHtml(r.nome)}</td><td>${escapeHtml(r.email)}</td><td><b>${escapeHtml(r.codigo)}</b></td></tr>`;
+    });
+    html += `</tbody></table>`;
+    box.innerHTML = html;
+
+    setMsg(`Relatório pronto: ${rows.length} inscritos.`, 'ok');
+  }
+
+  function downloadCSV(){
+    if(!lastReport || !lastReport.rows){ setMsg('Gere o relatório antes.', 'err'); return; }
+    const rows = lastReport.rows;
+    const header = ['#','Nome','E-mail','Código'];
+    const lines = [header.join(',')];
+    rows.forEach((r, i)=>{
+      lines.push([i+1, csv(r.nome), csv(r.email), csv(r.codigo)].join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type:'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url;
+    a.download=(lastReport.nome_evento || 'relatorio')+'.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    setMsg('CSV baixado.', 'ok');
+  }
+
+  async function createUser(){
+    const u = document.getElementById('uUsername').value.trim();
+    const n = document.getElementById('uNome').value.trim();
+    const r = document.getElementById('uRole').value;
+    const p = document.getElementById('uPass').value;
+
+    if(u.length < 3){ setMsg('Username inválido.', 'err'); return; }
+    if(n.length < 2){ setMsg('Nome inválido.', 'err'); return; }
+    if(p.length < 6){ setMsg('Senha fraca (mín. 6).', 'err'); return; }
+
+    setMsg('Criando usuário...');
+    const data = await api({ action:'user_create', token, username: u, nome: n, role: r, password: p });
+    if(!data.ok){ setMsg('Erro: '+data.error, 'err'); return; }
+    setMsg('Usuário criado.', 'ok');
+    document.getElementById('uUsername').value='';
+    document.getElementById('uNome').value='';
+    document.getElementById('uPass').value='';
+  }
+
+  function csv(s){ s=String(s||''); if(/[",\n]/.test(s)) return '"'+s.replace(/"/g,'""')+'"'; return s; }
+  function escapeHtml(s){ return String(s||'').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  // role check
+  if(String(role).toUpperCase() !== 'ADMIN'){
+    setMsg('Sem permissão: apenas ADMIN.', 'err');
+  }else{
+    loadEvents(true);
+  }
+</script>
+</body>
+</html>
