@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+  <title>Inscrição</title>
+  <style>
+    :root{--bg1:#0b1220;--bg2:#0f1b33;--card:rgba(255,255,255,.08);--stroke:rgba(255,255,255,.14);--txt:rgba(255,255,255,.92);--mut:rgba(255,255,255,.7);--ok:#38d39f;--err:#ff5a7a;}
+    *{box-sizing:border-box} body{margin:0;font-family:system-ui,Segoe UI,Roboto,Arial;color:var(--txt);background:radial-gradient(1100px 560px at 20% 0%, #1a2a57 0%, transparent 60%),radial-gradient(900px 520px at 85% 0%, #2b1a57 0%, transparent 55%),linear-gradient(160deg,var(--bg1),var(--bg2));min-height:100vh;display:grid;place-items:center;padding:18px}
+    .card{width:min(720px,100%);border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card),rgba(255,255,255,.05));border-radius:18px;padding:18px;box-shadow:0 18px 60px rgba(0,0,0,.45)}
+    h1{margin:0 0 6px;font-size:28px} p{margin:0;color:var(--mut);font-size:13px;line-height:1.55}
+    label{display:block;color:var(--mut);font-size:12px;margin:10px 0 6px}
+    input,select{width:100%;padding:12px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.22);color:var(--txt);outline:none}
+    button{width:100%;margin-top:12px;padding:12px;border:0;border-radius:14px;font-weight:900;color:#06111f;background:linear-gradient(135deg,#62f0c8,#4aa3ff);cursor:pointer}
+    button:disabled{opacity:.6;cursor:not-allowed}
+    .msg{margin-top:12px;padding:10px;border-radius:14px;border:1px solid var(--stroke);background:rgba(0,0,0,.18);color:var(--mut);font-size:13px}
+    .msg.ok{color:var(--ok)} .msg.err{color:var(--err)}
+    .code{font-size:36px;font-weight:1000;letter-spacing:4px;text-align:center;margin-top:6px}
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1 id="title">Inscrição</h1>
+    <p id="sub">Escolha o dia e preencha seus dados para receber seu código.</p>
+
+    <div id="msg" class="msg">Carregando evento…</div>
+
+    <label>Dia</label>
+    <select id="daySel"></select>
+
+    <label>Nome</label>
+    <input id="nome" placeholder="Nome completo"/>
+
+    <label>CPF</label>
+    <input id="cpf" placeholder="000.000.000-00" inputmode="numeric"/>
+
+    <label>E-mail</label>
+    <input id="email" placeholder="email@dominio.com" type="email"/>
+
+    <button id="btn" onclick="send()">Confirmar inscrição</button>
+  </div>
+
+<script>
+  const WEB_APP_URL = "COLE_AQUI_SUA_URL_DO_WEB_APP";
+  const qs = new URLSearchParams(location.search);
+  const eventId = qs.get('event_id'); // aluno usa event_id na URL
+
+  const msgEl = document.getElementById('msg');
+  const titleEl = document.getElementById('title');
+  const daySel = document.getElementById('daySel');
+  const btn = document.getElementById('btn');
+
+  function setMsg(html, cls=''){ msgEl.className='msg '+cls; msgEl.innerHTML=html; }
+  function esc(s){ return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  async function load(){
+    if(!eventId){
+      setMsg('❌ Falta <b>event_id</b> na URL. Ex.: <code>?event_id=seu-evento</code>', 'err');
+      btn.disabled = true;
+      return;
+    }
+    const res = await fetch(`${WEB_APP_URL}?action=status&event_id=${encodeURIComponent(eventId)}&ts=${Date.now()}`);
+    const data = await res.json();
+    if(!data.ok){
+      setMsg('❌ '+esc(data.error), 'err');
+      btn.disabled = true;
+      return;
+    }
+    titleEl.textContent = `Inscrição — ${data.nome_evento}`;
+
+    const days = (data.dias || []).filter(d => d.restantes > 0);
+    daySel.innerHTML='';
+    days.forEach(d=>{
+      const o=document.createElement('option');
+      o.value=d.day_label;
+      o.textContent=`${d.day_label} (restam ${d.restantes})`;
+      daySel.appendChild(o);
+    });
+    btn.disabled = daySel.options.length===0;
+    setMsg('✅ Selecione o dia e confirme sua inscrição.', 'ok');
+  }
+
+  function normCpf(v){ return (v||'').replace(/\D/g,''); }
+  function validCpf(c){ return /^\d{11}$/.test(c) && !/^(\d)\1{10}$/.test(c); }
+  function validEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((e||'').trim()); }
+
+  async function send(){
+    btn.disabled = true;
+
+    const day_label = daySel.value;
+    const nome = document.getElementById('nome').value.trim();
+    const cpf = document.getElementById('cpf').value.trim();
+    const email = document.getElementById('email').value.trim();
+
+    const cpfN = normCpf(cpf);
+    if(nome.length<2){ setMsg('❌ Nome inválido.', 'err'); btn.disabled=false; return; }
+    if(!validCpf(cpfN)){ setMsg('❌ CPF inválido.', 'err'); btn.disabled=false; return; }
+    if(!validEmail(email)){ setMsg('❌ E-mail inválido.', 'err'); btn.disabled=false; return; }
+
+    setMsg('Enviando...', '');
+
+    const form = new URLSearchParams();
+    form.set('action','register');
+    form.set('event_id', eventId);
+    form.set('day_label', day_label);
+    form.set('nome', nome);
+    form.set('cpf', cpf);
+    form.set('email', email);
+
+    try{
+      const res = await fetch(WEB_APP_URL, { method:'POST', body: form });
+      const data = await res.json();
+
+      if(!data.ok){
+        setMsg('❌ '+esc(data.error), 'err');
+        btn.disabled=false;
+        if(data.error==='SEM_VAGAS') load();
+        return;
+      }
+
+      setMsg(`✅ Inscrição confirmada!<div class="code">${esc(data.codigo)}</div><div style="text-align:center;color:rgba(255,255,255,.75);font-size:12px">Você também receberá por e-mail (até 1 minuto).</div>`, 'ok');
+
+      // ✅ melhoria: limpar campos para novo registro
+      document.getElementById('nome').value='';
+      document.getElementById('cpf').value='';
+      document.getElementById('email').value='';
+
+      await load();
+      btn.disabled=false;
+
+    }catch(e){
+      setMsg('❌ Falha: '+esc(String(e)), 'err');
+      btn.disabled=false;
+    }
+  }
+
+  // máscara CPF
+  document.getElementById('cpf').addEventListener('input', (e) => {
+    const v = e.target.value.replace(/\D/g,'').slice(0,11);
+    const p = v.replace(/^(\d{3})(\d)/, '$1.$2')
+               .replace(/^(\d{3})\.(\d{3})(\d)/, '$1.$2.$3')
+               .replace(/\.(\d{3})(\d)/, '.$1-$2');
+    e.target.value = p;
+  });
+
+  load();
+</script>
+</body>
+</html>
